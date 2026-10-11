@@ -5,6 +5,8 @@ const validFiles = [
   { path: 'package.json', content: '{"scripts":{"dev":"vite"}}' },
   { path: 'index.html', content: '<div id="root"></div>' },
   { path: 'src/main.tsx', content: 'import React from "react";' },
+  { path: 'src/App.tsx', content: 'export default function App() { return null; }' },
+  { path: 'src/styles.css', content: 'body { margin: 0; }' },
 ];
 
 describe('validateProjectFiles', () => {
@@ -13,7 +15,7 @@ describe('validateProjectFiles', () => {
   });
 
   it('rejects missing required root files', () => {
-    expect(validateProjectFiles([{ path: 'package.json', content: '{}' }, { path: 'src/App.tsx', content: 'export {}' }])).toBeNull();
+    expect(validateProjectFiles([{ path: 'package.json', content: '{}' }, { path: 'index.html', content: '<div></div>' }, { path: 'src/App.tsx', content: 'export {}' }])).toBeNull();
   });
 
   it('rejects path traversal and absolute paths', () => {
