@@ -146,6 +146,42 @@ export default function Home() {
     persistSavedWorkspaces(savedWorkspaces.filter((item) => item.id !== id));
   }
 
+  function exportSavedWorkspaces() {
+    if (savedWorkspaces.length === 0) { setError('لا توجد مشاريع محفوظة لتصديرها.'); return; }
+    const payload = JSON.stringify({ format: 'ai-builder-workspaces', version: 1, exportedAt: new Date().toISOString(), workspaces: savedWorkspaces }, null, 2);
+    const url = URL.createObjectURL(new Blob([payload], { type: 'application/json;charset=utf-8' }));
+    const link = document.createElement('a'); link.href = url; link.download = 'ai-builder-workspaces.json'; link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000); setError('');
+  }
+
+  async function importSavedWorkspaces(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]; event.target.value = ''; if (!file) return;
+    if (file.size > 1024 * 1024) { setError('ملف الاستيراد أكبر من الحد المسموح (1 ميغابايت).'); return; }
+    try {
+      const parsed: unknown = JSON.parse(await file.text());
+      if (!parsed || typeof parsed !== 'object' || !('format' in parsed) || parsed.format !== 'ai-builder-workspaces' || !('version' in parsed) || parsed.version !== 1 || !('workspaces' in parsed) || !Array.isArray(parsed.workspaces)) throw new Error('صيغة الملف غير مدعومة. استخدم ملف تصدير AI Builder.');
+      const imported: SavedWorkspace[] = [];
+      for (const value of parsed.workspaces.slice(0, 100)) {
+        if (!value || typeof value !== 'object') continue;
+        const item = value as Partial<SavedWorkspace>;
+        if (typeof item.name !== 'string' || typeof item.prompt !== 'string' || (item.mode !== 'project' && item.mode !== 'html') || typeof item.result !== 'string' || typeof item.savedAt !== 'string') continue;
+        if (item.name.length > 100 || item.prompt.length > 12000 || item.result.length > 150000) continue;
+        let safeProject: ProjectResult | null = null;
+        if (item.project !== null && item.project !== undefined) {
+          if (typeof item.project !== 'object') continue;
+          const p = item.project as Partial<ProjectResult>; const safeFiles = validateProjectFiles(p.files);
+          if (typeof p.name !== 'string' || p.name.length > 100 || typeof p.summary !== 'string' || p.summary.length > 2000 || !safeFiles) continue;
+          safeProject = { name: p.name, summary: p.summary, files: safeFiles, provider: typeof p.provider === 'string' ? p.provider.slice(0, 40) : 'imported' };
+        }
+        if (!safeProject && !item.result) continue;
+        imported.push({ id: (globalThis.crypto && globalThis.crypto.randomUUID) ? globalThis.crypto.randomUUID() : 'imported-' + Date.now() + '-' + imported.length, name: item.name, prompt: item.prompt, mode: item.mode, result: item.result, project: safeProject, savedAt: Number.isFinite(Date.parse(item.savedAt)) ? item.savedAt : new Date().toISOString() });
+      }
+      if (imported.length === 0) throw new Error('لم يُعثر على مشاريع صالحة في الملف.');
+      const merged = [...imported, ...savedWorkspaces.filter((saved) => !imported.some((item) => item.name === saved.name))].slice(0, 20);
+      persistSavedWorkspaces(merged); setError('تم استيراد ' + Math.min(imported.length, 20) + ' مشروعًا صالحًا. القائمة تحتفظ بحد أقصى 20 مشروعًا.');
+    } catch (e) { setError(e instanceof Error ? e.message : 'تعذر قراءة ملف المشاريع.'); }
+  }
+
   const activeFile = useMemo(() => {
     if (!project) return undefined;
     return project.files.find((file) => file.path === (selectedFile || project.files[0]?.path));
@@ -249,6 +285,7 @@ export default function Home() {
         <button className="side-link" type="button" onClick={() => setTab('files')}><span>▤</span> ملفات المشروع</button>
         <button className="side-link" type="button" onClick={() => setTab('code')}><span>{'</>'}</span> محرر الكود</button>
         <div className="side-label projects-label">مشاريعي المحفوظة <span>{savedWorkspaces.length}</span></div>
+        <div className="workspace-library-actions"><button type="button" onClick={exportSavedWorkspaces} disabled={savedWorkspaces.length === 0}>تصدير</button><button type="button" onClick={() => document.getElementById("workspace-import-file")?.click()}>استيراد</button><input id="workspace-import-file" type="file" accept="application/json,.json" hidden onChange={importSavedWorkspaces} /></div>
         <div className="saved-project-list">{savedWorkspaces.length === 0 ? <div className="empty-projects"><span className="empty-folder">▱</span><p>لا توجد مشاريع محفوظة</p><small>احفظ أي نتيجة من مساحة العمل</small></div> : savedWorkspaces.map((item) => <div className="saved-project-item" key={item.id}><button type="button" className="saved-project-open" onClick={() => openSavedWorkspace(item)} title={item.name}><span>▤</span><span>{item.name}</span></button><button type="button" className="saved-project-delete" onClick={() => deleteSavedWorkspace(item.id)} aria-label={`حذف ${item.name}`}>×</button></div>)}</div>
         <div className="sidebar-bottom">
           <div className="plan-card"><span className="plan-icon">✦</span><div><strong>مساحة البناء</strong><p>أنشئ فكرتك الأولى الآن</p></div></div>
