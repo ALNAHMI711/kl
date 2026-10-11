@@ -57,7 +57,7 @@ export default function Home() {
     const zipped = zipSync(files, { level: 6 });
     const url = URL.createObjectURL(new Blob([zipped.buffer as ArrayBuffer], { type: 'application/zip' }));
     const a = document.createElement('a'); a.href = url; a.download = 'ai-builder-project.zip'; a.click();
-    URL.revokeObjectURL(url);
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   return <main className="shell">
