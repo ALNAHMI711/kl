@@ -28,3 +28,6 @@ jobs:
       - run: npm test
       - run: npm run lint
       - run: npm run build
+      # Validate the production container image on every push and pull request.
+      - name: Build Docker image
+        run: docker build --tag ai-builder:ci .
