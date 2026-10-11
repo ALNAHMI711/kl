@@ -24,6 +24,11 @@ function getClientKey(request: Request): string {
 
 export async function POST(request: Request) {
   try {
+    const contentType = request.headers.get('content-type')?.split(';', 1)[0].trim().toLowerCase();
+    if (contentType !== 'application/json') {
+      return NextResponse.json({ error: 'يجب إرسال الطلب بصيغة JSON.' }, { status: 415 });
+    }
+
     const contentLength = Number(request.headers.get('content-length') || 0);
     if (contentLength > 20000) return NextResponse.json({ error: 'حجم الطلب أكبر من الحد المسموح.' }, { status: 413 });
 
