@@ -23,8 +23,10 @@ describe('validateProjectFiles', () => {
     expect(validateProjectFiles([...validFiles, { path: '/tmp/evil.ts', content: 'x' }])).toBeNull();
   });
 
-  it('rejects backslash paths and unsupported file locations', () => {
+  it('rejects backslash paths, empty path segments, and unsupported file locations', () => {
     expect(validateProjectFiles([...validFiles, { path: 'src\\\\evil.ts', content: 'x' }])).toBeNull();
+    expect(validateProjectFiles([...validFiles, { path: 'src//nested.ts', content: 'x' }])).toBeNull();
+    expect(validateProjectFiles([...validFiles, { path: 'src/./nested.ts', content: 'x' }])).toBeNull();
     expect(validateProjectFiles([...validFiles, { path: 'public/evil.js', content: 'x' }])).toBeNull();
   });
 
