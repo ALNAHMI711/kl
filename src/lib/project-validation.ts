@@ -22,6 +22,7 @@ export function validateProjectFiles(value: unknown): ProjectFile[] | null {
     if (total > MAX_TOTAL_LENGTH) return null;
     files.push({ path, content });
   }
-  if (!seen.has('package.json') || !seen.has('index.html')) return null;
+  const required = ['package.json', 'index.html', 'src/main.tsx', 'src/App.tsx', 'src/styles.css'];
+  if (!required.every((path) => seen.has(path))) return null;
   return files;
 }
