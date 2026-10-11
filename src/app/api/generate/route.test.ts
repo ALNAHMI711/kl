@@ -20,6 +20,15 @@ describe('POST /api/generate', () => {
     expect((await response.json()).error).toContain('JSON');
   });
 
+  it('rejects requests that do not declare JSON content type', async () => {
+    const response = await POST(request(
+      JSON.stringify({ prompt: 'Create a responsive Arabic interface' }),
+      { 'content-type': 'text/plain' },
+    ));
+    expect(response.status).toBe(415);
+    expect((await response.json()).error).toContain('JSON');
+  });
+
   it('rejects prompts that are too short', async () => {
     const response = await POST(request(JSON.stringify({ prompt: 'short' })));
     expect(response.status).toBe(400);
