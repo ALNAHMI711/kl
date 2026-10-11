@@ -34,6 +34,17 @@ describe('GET /api/health', () => {
     expect(body.providerConfigured).toBe(false);
   });
 
+  it('treats whitespace-only API keys as missing', async () => {
+    vi.stubEnv('AI_PROVIDER', 'openai');
+    vi.stubEnv('OPENAI_API_KEY', '   ');
+    const response = await GET();
+    const body = await response.json();
+
+    expect(body.status).toBe('ok');
+    expect(body.ready).toBe(false);
+    expect(body.providerConfigured).toBe(false);
+  });
+
   it('marks an unsupported provider as not ready without disclosing configuration', async () => {
     vi.stubEnv('AI_PROVIDER', 'unknown-provider');
     const response = await GET();
