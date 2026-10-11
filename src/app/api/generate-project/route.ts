@@ -100,7 +100,18 @@ export async function POST(request: Request) {
     const summary = typeof parsed.summary === 'string' ? parsed.summary.slice(0, 2000) : '';
     return NextResponse.json({ name, summary, files, provider: result.provider });
   } catch (error) {
-    console.error('AI project generation failed:', error instanceof Error ? error.message : 'Unknown error');
+    if (error instanceof Error && error.message === 'No configured AI provider keys') {
+      const selected = (process.env.AI_PROVIDER || 'openai').trim().toLowerCase();
+      const message = selected === 'auto'
+        ? 'أضف مفتاحًا صالحًا واحدًا على الأقل من OPENAI_API_KEY أو ANTHROPIC_API_KEY أو GOOGLE_GENERATIVE_AI_API_KEY.'
+        : selected === 'anthropic'
+          ? 'أضف ANTHROPIC_API_KEY في إعدادات البيئة على الخادم.'
+          : selected === 'google'
+            ? 'أضف GOOGLE_GENERATIVE_AI_API_KEY في إعدادات البيئة على الخادم.'
+            : 'أضف OPENAI_API_KEY في إعدادات البيئة على الخادم.';
+      return NextResponse.json({ error: message }, { status: 503 });
+    }
+    console.error('AI project generation failed:', error instanceof Error ? error.name : 'UnknownError');
     return NextResponse.json({ error: 'تعذر إنشاء المشروع. تحقق من إعدادات المزود وحدود الاستخدام ثم أعد المحاولة.' }, { status: 502 });
   }
 }
