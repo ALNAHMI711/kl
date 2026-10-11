@@ -85,14 +85,17 @@ export async function POST(request: Request) {
     const provider = (process.env.AI_PROVIDER || 'openai').toLowerCase();
     let model;
     if (provider === 'openai') {
-      if (!process.env.OPENAI_API_KEY) return NextResponse.json({ error: 'أضف OPENAI_API_KEY في إعدادات البيئة على الخادم.' }, { status: 503 });
-      model = createOpenAI({ apiKey: process.env.OPENAI_API_KEY })(process.env.OPENAI_MODEL || 'gpt-4.1-mini');
+      const apiKey = process.env.OPENAI_API_KEY?.trim();
+      if (!apiKey) return NextResponse.json({ error: 'أضف OPENAI_API_KEY في إعدادات البيئة على الخادم.' }, { status: 503 });
+      model = createOpenAI({ apiKey })(process.env.OPENAI_MODEL || 'gpt-4.1-mini');
     } else if (provider === 'anthropic') {
-      if (!process.env.ANTHROPIC_API_KEY) return NextResponse.json({ error: 'أضف ANTHROPIC_API_KEY في إعدادات البيئة على الخادم.' }, { status: 503 });
-      model = createAnthropic({ apiKey: process.env.ANTHROPIC_API_KEY })(process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5');
+      const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
+      if (!apiKey) return NextResponse.json({ error: 'أضف ANTHROPIC_API_KEY في إعدادات البيئة على الخادم.' }, { status: 503 });
+      model = createAnthropic({ apiKey })(process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5');
     } else if (provider === 'google') {
-      if (!process.env.GOOGLE_GENERATIVE_AI_API_KEY) return NextResponse.json({ error: 'أضف GOOGLE_GENERATIVE_AI_API_KEY في إعدادات البيئة على الخادم.' }, { status: 503 });
-      model = createGoogleGenerativeAI({ apiKey: process.env.GOOGLE_GENERATIVE_AI_API_KEY })(process.env.GOOGLE_GENERATIVE_AI_MODEL || 'gemini-2.5-flash');
+      const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY?.trim();
+      if (!apiKey) return NextResponse.json({ error: 'أضف GOOGLE_GENERATIVE_AI_API_KEY في إعدادات البيئة على الخادم.' }, { status: 503 });
+      model = createGoogleGenerativeAI({ apiKey })(process.env.GOOGLE_GENERATIVE_AI_MODEL || 'gemini-2.5-flash');
     } else {
       return NextResponse.json({ error: 'استخدم مزودًا من: openai أو anthropic أو google.' }, { status: 400 });
     }
