@@ -73,7 +73,15 @@ export default function Home() {
       if (raw) {
         const parsed: unknown = JSON.parse(raw);
         if (Array.isArray(parsed)) {
-          const safe = parsed.filter((item): item is SavedWorkspace => Boolean(item && typeof item === 'object' && typeof item.id === 'string' && typeof item.name === 'string' && typeof item.prompt === 'string' && (item.mode === 'project' || item.mode === 'html') && typeof item.result === 'string' && typeof item.savedAt === 'string' && (item.project === null || (typeof item.project === 'object' && item.project !== null && typeof item.project.name === 'string' && typeof item.project.summary === 'string' && Boolean(validateProjectFiles(item.project.files))))).slice(0, 20);
+          const safe = parsed.filter((item): item is SavedWorkspace => {
+            if (!item || typeof item !== 'object') return false;
+            const candidate = item as Partial<SavedWorkspace>;
+            if (typeof candidate.id !== 'string' || typeof candidate.name !== 'string' || typeof candidate.prompt !== 'string' || (candidate.mode !== 'project' && candidate.mode !== 'html') || typeof candidate.result !== 'string' || typeof candidate.savedAt !== 'string') return false;
+            if (candidate.project === null) return true;
+            if (!candidate.project || typeof candidate.project !== 'object') return false;
+            const candidateProject = candidate.project as Partial<ProjectResult>;
+            return typeof candidateProject.name === 'string' && typeof candidateProject.summary === 'string' && Boolean(validateProjectFiles(candidateProject.files));
+          }).slice(0, 20);
           setSavedWorkspaces(safe);
         }
       }
@@ -289,7 +297,7 @@ export default function Home() {
 
           {hasOutput && !loading && (
             <section className="workspace">
-              <div className="workspace-heading"><div><div className="eyebrow">مساحة المشروع</div><h1>{project?.name || 'نموذج HTML'}</h1><p>{project?.summary || 'تم استلام نتيجة التوليد. راجع المخرجات قبل استخدامها.'}</p>{restored && <span className="saved-workspace-badge">✓ تمت استعادة آخر مساحة عمل من هذا المتصفح</span>}</div><div className="workspace-actions"><button className="secondary-button" onClick={saveCurrentWorkspace} type="button">حفظ في مشاريعي</button>{project && <button className="secondary-button" onClick={downloadProject} type="button">↓ تنزيل ZIP</button>{result && <button className="secondary-button" onClick={downloadHtml} type="button">↓ تنزيل HTML</button>}<button className="primary-small" onClick={() => { setProject(null); setResult(''); setPrompt(''); setError(''); setRestored(false); try { window.localStorage.removeItem('ai-builder:last-workspace:v1'); } catch { /* storage may be disabled */ } }} type="button">＋ مشروع جديد</button></div></div>
+              <div className="workspace-heading"><div><div className="eyebrow">مساحة المشروع</div><h1>{project?.name || 'نموذج HTML'}</h1><p>{project?.summary || 'تم استلام نتيجة التوليد. راجع المخرجات قبل استخدامها.'}</p>{restored && <span className="saved-workspace-badge">✓ تمت استعادة آخر مساحة عمل من هذا المتصفح</span>}</div><div className="workspace-actions"><button className="secondary-button" onClick={saveCurrentWorkspace} type="button">حفظ في مشاريعي</button>{project && <button className="secondary-button" onClick={downloadProject} type="button">↓ تنزيل ZIP</button>}{result && <button className="secondary-button" onClick={downloadHtml} type="button">↓ تنزيل HTML</button>}<button className="primary-small" onClick={() => { setProject(null); setResult(''); setPrompt(''); setError(''); setRestored(false); try { window.localStorage.removeItem('ai-builder:last-workspace:v1'); } catch { /* storage may be disabled */ } }} type="button">＋ مشروع جديد</button></div></div>
               {error && <div className="notice error" role="alert">{error}</div>}
               <div className="workspace-frame">
                 <div className="frame-toolbar"><div className="window-dots"><i /><i /><i /></div><div className="workspace-tabs"><button className={tab === 'preview' ? 'active' : ''} onClick={() => setTab('preview')} type="button">◉ المعاينة</button><button className={tab === 'code' ? 'active' : ''} onClick={() => setTab('code')} type="button">{'</>'} الكود</button><button className={tab === 'files' ? 'active' : ''} onClick={() => setTab('files')} type="button">▤ الملفات</button></div><span className="frame-status"><i /> ملفات مولدة</span></div>
