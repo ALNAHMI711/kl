@@ -39,6 +39,8 @@ describe('validateProjectFiles', () => {
     expect(validateProjectFiles(withPackage(JSON.stringify({ scripts: { prepare: 'node setup.js' } })))).toBeNull();
     expect(validateProjectFiles(withPackage(JSON.stringify({ scripts: { preprepare: 'node before.js' } })))).toBeNull();
     expect(validateProjectFiles(withPackage(JSON.stringify({ scripts: { postprepare: 'node after.js' } })))).toBeNull();
+    expect(validateProjectFiles(withPackage(JSON.stringify({ scripts: { predev: 'node before-dev.js', dev: 'vite' } })))).toBeNull();
+    expect(validateProjectFiles(withPackage(JSON.stringify({ scripts: { build: 'vite build', postbuild: 'node after-build.js' } })))).toBeNull();
   });
 
   it('allows ordinary development scripts in package.json', () => {
