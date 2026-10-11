@@ -1,7 +1,4 @@
-import { generateText } from 'ai';
-import { createOpenAI } from '@ai-sdk/openai';
-import { createAnthropic } from '@ai-sdk/anthropic';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { generateWithConfiguredProvider } from '@/lib/ai-generation';
 import { NextResponse } from 'next/server';
 import { readTextBodyLimited } from '@/lib/read-limited-body';
 import { validateProjectFiles } from '@/lib/project-validation';
@@ -82,27 +79,7 @@ export async function POST(request: Request) {
     if (prompt.length < 10) return NextResponse.json({ error: 'اكتب وصفًا واضحًا (10 أحرف على الأقل).' }, { status: 400 });
     if (prompt.length > MAX_PROMPT_LENGTH) return NextResponse.json({ error: 'الحد الأقصى للوصف 12000 حرف.' }, { status: 413 });
 
-    const provider = (process.env.AI_PROVIDER || 'openai').toLowerCase();
-    let model;
-    if (provider === 'openai') {
-      const apiKey = process.env.OPENAI_API_KEY?.trim();
-      if (!apiKey) return NextResponse.json({ error: 'أضف OPENAI_API_KEY في إعدادات البيئة على الخادم.' }, { status: 503 });
-      model = createOpenAI({ apiKey })(process.env.OPENAI_MODEL || 'gpt-4.1-mini');
-    } else if (provider === 'anthropic') {
-      const apiKey = process.env.ANTHROPIC_API_KEY?.trim();
-      if (!apiKey) return NextResponse.json({ error: 'أضف ANTHROPIC_API_KEY في إعدادات البيئة على الخادم.' }, { status: 503 });
-      model = createAnthropic({ apiKey })(process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5');
-    } else if (provider === 'google') {
-      const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY?.trim();
-      if (!apiKey) return NextResponse.json({ error: 'أضف GOOGLE_GENERATIVE_AI_API_KEY في إعدادات البيئة على الخادم.' }, { status: 503 });
-      model = createGoogleGenerativeAI({ apiKey })(process.env.GOOGLE_GENERATIVE_AI_MODEL || 'gemini-2.5-flash');
-    } else {
-      return NextResponse.json({ error: 'استخدم مزودًا من: openai أو anthropic أو google.' }, { status: 400 });
-    }
-
-    const result = await generateText({
-      abortSignal: AbortSignal.timeout(55_000),
-      model,
+    const result = await generateWithConfiguredProvider({
       system: 'أنت مهندس برمجيات خبير. أخرج JSON صالحًا فقط بالشكل {"name":"اسم المشروع","summary":"ملخص عربي","files":[{"path":"package.json","content":"..."},{"path":"index.html","content":"..."}]}. أنشئ مشروع واجهة أمامية أوليًا متعدد الملفات باستخدام Vite وReact وTypeScript. يجب أن يتضمن package.json وindex.html وsrc/main.tsx وsrc/App.tsx وsrc/styles.css. اجعل التصميم متجاوبًا ودعم RTL عند ملاءمة الوصف. لا تضف أسرارًا أو مفاتيح API. لا تنشئ backend مزيفًا أو تدّعِ النشر. لا تضع ملفات خارج مسارات src/ أو ملفات الجذر المسموح بها. في package.json استخدم فقط أوامر scripts المعروفة: dev=vite، build=vite build أو tsc -b && vite build، preview=vite preview، typecheck=tsc --noEmit، lint=eslint .، test=vitest run؛ لا تضف أوامر shell أو سكربتات مخصصة. استخدم تبعيات من سجل npm العادي فقط. لا تستخدم Markdown أو أسوار كود خارج JSON.',
       prompt: 'أنشئ الملفات اللازمة لمشروع أولي قابل للتطوير وفق الفكرة التالية. اجعل كل قيمة content نص الملف كاملًا.\n\n' + prompt,
       maxOutputTokens: 10000,
@@ -121,7 +98,7 @@ export async function POST(request: Request) {
 
     const name = typeof parsed.name === 'string' ? parsed.name.slice(0, 100) : 'مشروع جديد';
     const summary = typeof parsed.summary === 'string' ? parsed.summary.slice(0, 2000) : '';
-    return NextResponse.json({ name, summary, files, provider });
+    return NextResponse.json({ name, summary, files, provider: result.provider });
   } catch (error) {
     console.error('AI project generation failed:', error instanceof Error ? error.message : 'Unknown error');
     return NextResponse.json({ error: 'تعذر إنشاء المشروع. تحقق من إعدادات المزود وحدود الاستخدام ثم أعد المحاولة.' }, { status: 502 });
