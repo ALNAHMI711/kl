@@ -11,6 +11,15 @@ export const maxDuration = 60;
 const WINDOW_MS = 10 * 60 * 1000;
 const MAX_REQUESTS_PER_WINDOW = 10;
 const requestWindows = new Map<string, { count: number; startedAt: number }>();
+const MAX_TRACKED_CLIENTS = 5000;
+
+function getClientKey(request: Request): string {
+  // Forwarded headers are client-spoofable unless a trusted reverse proxy overwrites them.
+  if (process.env.TRUST_PROXY_HEADERS !== 'true') return 'untrusted-client';
+  return request.headers.get('x-real-ip')?.trim()
+    || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    || 'unknown';
+}
 
 export async function POST(request: Request) {
   try {
@@ -27,8 +36,7 @@ export async function POST(request: Request) {
       }
     }
 
-    const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
-    const ip = request.headers.get('x-real-ip') || forwarded || 'unknown';
+    const ip = getClientKey(request);
     const now = Date.now();
     const window = requestWindows.get(ip);
     if (window && now - window.startedAt < WINDOW_MS && window.count >= MAX_REQUESTS_PER_WINDOW) {
@@ -36,8 +44,27 @@ export async function POST(request: Request) {
     }
     if (!window || now - window.startedAt >= WINDOW_MS) requestWindows.set(ip, { count: 1, startedAt: now });
     else window.count += 1;
+    // Prevent an attacker from growing the process-local map without bound.
+    if (requestWindows.size > MAX_TRACKED_CLIENTS) {
+      for (const [key, entry] of requestWindows) {
+        if (now - entry.startedAt >= WINDOW_MS) requestWindows.delete(key);
+        if (requestWindows.size <= MAX_TRACKED_CLIENTS) break;
+      }
+      if (requestWindows.size > MAX_TRACKED_CLIENTS && !requestWindows.has(ip)) {
+        return NextResponse.json({ error: 'الخدمة مشغولة مؤقتًا. حاول لاحقًا.' }, { status: 503 });
+      }
+    }
 
-    const body: unknown = await request.json();
+    const rawBody = await request.text();
+    if (new TextEncoder().encode(rawBody).byteLength > 20000) {
+      return NextResponse.json({ error: 'حجم الطلب أكبر من الحد المسموح.' }, { status: 413 });
+    }
+    let body: unknown;
+    try {
+      body = JSON.parse(rawBody);
+    } catch {
+      return NextResponse.json({ error: 'صيغة JSON غير صالحة.' }, { status: 400 });
+    }
     if (!body || typeof body !== 'object' || !('prompt' in body) || typeof body.prompt !== 'string') return NextResponse.json({ error: 'الطلب غير صالح.' }, { status: 400 });
     const prompt = body.prompt.trim();
     if (prompt.length < 10) return NextResponse.json({ error: 'اكتب وصفًا واضحًا (10 أحرف على الأقل).' }, { status: 400 });
