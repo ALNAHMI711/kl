@@ -9,7 +9,6 @@ export const metadata: Metadata = {
   },
   description: 'أنشئ واجهات ومشاريع ويب متعددة الملفات بمساعدة الذكاء الاصطناعي، ثم راجع الملفات ونزّل مشروعك.',
   keywords: ['AI Builder', 'منشئ التطبيقات', 'إنشاء مواقع', 'React', 'Vite', 'الذكاء الاصطناعي'],
-  metadataBase: new URL('https://github.com/ALNAHMI711/kl'),
   openGraph: {
     title: 'AI Builder | منشئ التطبيقات الذكي',
     description: 'حوّل فكرتك إلى نموذج ويب أو مشروع أولي متعدد الملفات.',
