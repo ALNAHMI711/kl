@@ -8,6 +8,7 @@ import { extractFencedHtml } from '@/lib/html-output';
 type ProjectFile = { path: string; content: string };
 type ProjectResult = { name: string; summary: string; files: ProjectFile[]; provider: string };
 type WorkspaceTab = 'preview' | 'code' | 'files';
+type SavedWorkspace = { id: string; name: string; prompt: string; mode: 'project' | 'html'; result: string; project: ProjectResult | null; savedAt: string };
 
 const examples = [
   { icon: '▦', title: 'متجر إلكتروني', description: 'منتجات وسلة شراء ولوحة تحكم', prompt: 'أنشئ متجرًا إلكترونيًا عربيًا متجاوبًا لعرض المنتجات مع بحث وتصنيفات وسلة شراء أمامية.' },
@@ -28,6 +29,7 @@ export default function Home() {
   const [copied, setCopied] = useState(false);
   const [hydrated, setHydrated] = useState(false);
   const [restored, setRestored] = useState(false);
+  const [savedWorkspaces, setSavedWorkspaces] = useState<SavedWorkspace[]>([]);
 
   useEffect(() => {
     try {
@@ -66,6 +68,21 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem('ai-builder:saved-workspaces:v1');
+      if (raw) {
+        const parsed: unknown = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          const safe = parsed.filter((item): item is SavedWorkspace => Boolean(item && typeof item === 'object' && typeof item.id === 'string' && typeof item.name === 'string' && typeof item.prompt === 'string' && (item.mode === 'project' || item.mode === 'html') && typeof item.result === 'string' && typeof item.savedAt === 'string' && (item.project === null || (typeof item.project === 'object' && item.project !== null && typeof item.project.name === 'string' && typeof item.project.summary === 'string' && Boolean(validateProjectFiles(item.project.files))))).slice(0, 20);
+          setSavedWorkspaces(safe);
+        }
+      }
+    } catch {
+      try { window.localStorage.removeItem('ai-builder:saved-workspaces:v1'); } catch { /* storage may be disabled */ }
+    }
+  }, []);
+
+  useEffect(() => {
     if (!hydrated) return;
     if (!project && !result) return;
     try {
@@ -76,6 +93,50 @@ export default function Home() {
       setError('تعذر حفظ مساحة العمل محليًا؛ قد تكون مساحة التخزين ممتلئة.');
     }
   }, [hydrated, prompt, mode, result, project, selectedFile]);
+
+  function persistSavedWorkspaces(items: SavedWorkspace[]) {
+    setSavedWorkspaces(items);
+    try {
+      window.localStorage.setItem('ai-builder:saved-workspaces:v1', JSON.stringify(items));
+    } catch {
+      setError('تعذر حفظ قائمة المشاريع؛ مساحة تخزين المتصفح قد تكون ممتلئة.');
+    }
+  }
+
+  function saveCurrentWorkspace() {
+    if (!project && !result) {
+      setError('أنشئ مشروعًا أولًا قبل حفظه في القائمة.');
+      return;
+    }
+    const name = (project?.name || prompt.trim().slice(0, 60) || 'نموذج HTML').slice(0, 100);
+    const item: SavedWorkspace = {
+      id: globalThis.crypto?.randomUUID?.() || `workspace-${Date.now()}`,
+      name,
+      prompt,
+      mode,
+      result,
+      project,
+      savedAt: new Date().toISOString(),
+    };
+    persistSavedWorkspaces([item, ...savedWorkspaces.filter((saved) => saved.name !== name)].slice(0, 20));
+    setError('');
+  }
+
+  function openSavedWorkspace(item: SavedWorkspace) {
+    const safeFiles = item.project ? validateProjectFiles(item.project.files) : null;
+    setPrompt(item.prompt.slice(0, 12000));
+    setMode(item.mode);
+    setResult(item.result.slice(0, 150000));
+    setProject(item.project && safeFiles ? { ...item.project, files: safeFiles } : null);
+    setSelectedFile(item.project?.files[0]?.path || '');
+    setTab('code');
+    setRestored(true);
+    setError('');
+  }
+
+  function deleteSavedWorkspace(id: string) {
+    persistSavedWorkspaces(savedWorkspaces.filter((item) => item.id !== id));
+  }
 
   const activeFile = useMemo(() => {
     if (!project) return undefined;
@@ -179,8 +240,8 @@ export default function Home() {
         <button className="side-link selected" type="button"><span>⌂</span> نظرة عامة</button>
         <button className="side-link" type="button" onClick={() => setTab('files')}><span>▤</span> ملفات المشروع</button>
         <button className="side-link" type="button" onClick={() => setTab('code')}><span>{'</>'}</span> محرر الكود</button>
-        <div className="side-label projects-label">مشاريعك <span>—</span></div>
-        <div className="empty-projects"><span className="empty-folder">▱</span><p>مشاريعك الجديدة<br />ستظهر هنا</p><small>هذه القائمة للواجهة الحالية</small></div>
+        <div className="side-label projects-label">مشاريعي المحفوظة <span>{savedWorkspaces.length}</span></div>
+        <div className="saved-project-list">{savedWorkspaces.length === 0 ? <div className="empty-projects"><span className="empty-folder">▱</span><p>لا توجد مشاريع محفوظة</p><small>احفظ أي نتيجة من مساحة العمل</small></div> : savedWorkspaces.map((item) => <div className="saved-project-item" key={item.id}><button type="button" className="saved-project-open" onClick={() => openSavedWorkspace(item)} title={item.name}><span>▤</span><span>{item.name}</span></button><button type="button" className="saved-project-delete" onClick={() => deleteSavedWorkspace(item.id)} aria-label={`حذف ${item.name}`}>×</button></div>)}</div>
         <div className="sidebar-bottom">
           <div className="plan-card"><span className="plan-icon">✦</span><div><strong>مساحة البناء</strong><p>أنشئ فكرتك الأولى الآن</p></div></div>
           <div className="profile-row"><div className="avatar">م</div><div className="profile-copy"><strong>مساحة شخصية</strong><small>نسخة تجريبية</small></div><span className="dots">•••</span></div>
@@ -228,7 +289,7 @@ export default function Home() {
 
           {hasOutput && !loading && (
             <section className="workspace">
-              <div className="workspace-heading"><div><div className="eyebrow">مساحة المشروع</div><h1>{project?.name || 'نموذج HTML'}</h1><p>{project?.summary || 'تم استلام نتيجة التوليد. راجع المخرجات قبل استخدامها.'}</p>{restored && <span className="saved-workspace-badge">✓ تمت استعادة آخر مساحة عمل من هذا المتصفح</span>}</div><div className="workspace-actions">{project && <button className="secondary-button" onClick={downloadProject} type="button">↓ تنزيل ZIP</button>}{result && <button className="secondary-button" onClick={downloadHtml} type="button">↓ تنزيل HTML</button>}<button className="primary-small" onClick={() => { setProject(null); setResult(''); setPrompt(''); setError(''); setRestored(false); try { window.localStorage.removeItem('ai-builder:last-workspace:v1'); } catch { /* storage may be disabled */ } }} type="button">＋ مشروع جديد</button></div></div>
+              <div className="workspace-heading"><div><div className="eyebrow">مساحة المشروع</div><h1>{project?.name || 'نموذج HTML'}</h1><p>{project?.summary || 'تم استلام نتيجة التوليد. راجع المخرجات قبل استخدامها.'}</p>{restored && <span className="saved-workspace-badge">✓ تمت استعادة آخر مساحة عمل من هذا المتصفح</span>}</div><div className="workspace-actions"><button className="secondary-button" onClick={saveCurrentWorkspace} type="button">حفظ في مشاريعي</button>{project && <button className="secondary-button" onClick={downloadProject} type="button">↓ تنزيل ZIP</button>{result && <button className="secondary-button" onClick={downloadHtml} type="button">↓ تنزيل HTML</button>}<button className="primary-small" onClick={() => { setProject(null); setResult(''); setPrompt(''); setError(''); setRestored(false); try { window.localStorage.removeItem('ai-builder:last-workspace:v1'); } catch { /* storage may be disabled */ } }} type="button">＋ مشروع جديد</button></div></div>
               {error && <div className="notice error" role="alert">{error}</div>}
               <div className="workspace-frame">
                 <div className="frame-toolbar"><div className="window-dots"><i /><i /><i /></div><div className="workspace-tabs"><button className={tab === 'preview' ? 'active' : ''} onClick={() => setTab('preview')} type="button">◉ المعاينة</button><button className={tab === 'code' ? 'active' : ''} onClick={() => setTab('code')} type="button">{'</>'} الكود</button><button className={tab === 'files' ? 'active' : ''} onClick={() => setTab('files')} type="button">▤ الملفات</button></div><span className="frame-status"><i /> ملفات مولدة</span></div>
