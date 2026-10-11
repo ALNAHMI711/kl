@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { strToU8, zipSync } from 'fflate';
 import { validateProjectFiles } from '@/lib/project-validation';
+import { extractFencedHtml } from '@/lib/html-output';
 
 type ProjectFile = { path: string; content: string };
 type ProjectResult = { name: string; summary: string; files: ProjectFile[]; provider: string };
@@ -130,14 +131,12 @@ export default function Home() {
   }
 
   function downloadHtml() {
-    const tick = String.fromCharCode(96);
-    const re = new RegExp(tick + tick + tick + 'html\\s*([\\s\\S]*?)' + tick + tick + tick, 'i');
-    const match = result.match(re);
-    if (!match) {
+    const html = extractFencedHtml(result);
+    if (html === null) {
       setError('لم أجد كتلة HTML في النتيجة. حاول مرة أخرى.');
       return;
     }
-    const url = URL.createObjectURL(new Blob([match[1]], { type: 'text/html;charset=utf-8' }));
+    const url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
     const a = document.createElement('a');
     a.href = url;
     a.download = 'ai-builder-prototype.html';
@@ -162,12 +161,7 @@ export default function Home() {
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  const htmlPreview = useMemo(() => {
-    if (!result) return '';
-    const tick = String.fromCharCode(96);
-    const pattern = new RegExp(tick + tick + tick + 'html\\s*([\\s\\S]*?)' + tick + tick + tick, 'i');
-    return result.match(pattern)?.[1] || '';
-  }, [result]);
+  const htmlPreview = useMemo(() => extractFencedHtml(result) || '', [result]);
 
   const hasOutput = Boolean(project || result);
 
