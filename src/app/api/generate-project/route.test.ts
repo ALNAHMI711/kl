@@ -40,4 +40,18 @@ describe('POST /api/generate-project', () => {
     ));
     expect(response.status).toBe(403);
   });
+  it('rejects a JSON body without a string prompt', async () => {
+    const response = await POST(request(JSON.stringify({ prompt: 42 })));
+    expect(response.status).toBe(400);
+    expect((await response.json()).error).toContain('غير صالح');
+  });
+
+  it('rejects a request whose declared content length exceeds the limit', async () => {
+    const response = await POST(request(
+      JSON.stringify({ prompt: 'Create a responsive Arabic dashboard' }),
+      { 'content-length': '20001' },
+    ));
+    expect(response.status).toBe(413);
+  });
+
 });
