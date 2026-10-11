@@ -3,11 +3,10 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { NextResponse } from 'next/server';
+import { validateProjectFiles } from '@/lib/project-validation';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
-
-import { validateProjectFiles } from '@/lib/project-validation';
 
 const MAX_PROMPT_LENGTH = 12000;
 const WINDOW_MS = 10 * 60 * 1000;
