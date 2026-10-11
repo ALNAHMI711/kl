@@ -63,7 +63,8 @@ export async function generateWithConfiguredProvider(options: GenerationOptions)
     try {
       const result = await generateText({
         ...options,
-        abortSignal: AbortSignal.timeout(55_000),
+        // Keep auto failover within the route's 60-second execution budget.
+        abortSignal: AbortSignal.timeout(selected === 'auto' ? 17_000 : 55_000),
         model,
       });
       return { text: result.text, provider };
