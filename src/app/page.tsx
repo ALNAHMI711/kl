@@ -24,10 +24,10 @@ export default function Home() {
   const [tab, setTab] = useState<WorkspaceTab>('preview');
   const [selectedFile, setSelectedFile] = useState('');
 
-  const activeFile = useMemo(
-    () => project?.files.find((file) => file.path === (selectedFile || project.files[0]?.path)),
-    [project, selectedFile]
-  );
+  const activeFile = useMemo(() => {
+    if (!project) return undefined;
+    return project.files.find((file) => file.path === (selectedFile || project.files[0]?.path));
+  }, [project, selectedFile]);
 
   async function build() {
     setError('');
@@ -64,7 +64,7 @@ export default function Home() {
 
   function downloadHtml() {
     const tick = String.fromCharCode(96);
-    const re = new RegExp(tick + tick + tick + 'html\\\\s*([\\\\s\\\\S]*?)' + tick + tick + tick, 'i');
+    const re = new RegExp(tick + tick + tick + 'html\\s*([\\s\\S]*?)' + tick + tick + tick, 'i');
     const match = result.match(re);
     if (!match) {
       setError('لم أجد كتلة HTML في النتيجة. حاول مرة أخرى.');
