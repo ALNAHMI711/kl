@@ -3,6 +3,7 @@ import { createOpenAI } from '@ai-sdk/openai';
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { NextResponse } from 'next/server';
+import { readTextBodyLimited } from '@/lib/read-limited-body';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -55,8 +56,8 @@ export async function POST(request: Request) {
       }
     }
 
-    const rawBody = await request.text();
-    if (new TextEncoder().encode(rawBody).byteLength > 20000) {
+    const rawBody = await readTextBodyLimited(request, 20000);
+    if (rawBody === null) {
       return NextResponse.json({ error: 'حجم الطلب أكبر من الحد المسموح.' }, { status: 413 });
     }
     let body: unknown;
