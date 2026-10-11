@@ -7,8 +7,36 @@ import { NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
+// Process-local guard only. Replace with shared Redis/managed rate limiting before scaling.
+const WINDOW_MS = 10 * 60 * 1000;
+const MAX_REQUESTS_PER_WINDOW = 10;
+const requestWindows = new Map<string, { count: number; startedAt: number }>();
+
 export async function POST(request: Request) {
   try {
+    const contentLength = Number(request.headers.get('content-length') || 0);
+    if (contentLength > 20000) return NextResponse.json({ error: 'حجم الطلب أكبر من الحد المسموح.' }, { status: 413 });
+
+    const origin = request.headers.get('origin');
+    const host = request.headers.get('host');
+    if (origin && host) {
+      try {
+        if (new URL(origin).host !== host) return NextResponse.json({ error: 'مصدر الطلب غير مسموح.' }, { status: 403 });
+      } catch {
+        return NextResponse.json({ error: 'رأس Origin غير صالح.' }, { status: 403 });
+      }
+    }
+
+    const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+    const ip = request.headers.get('x-real-ip') || forwarded || 'unknown';
+    const now = Date.now();
+    const window = requestWindows.get(ip);
+    if (window && now - window.startedAt < WINDOW_MS && window.count >= MAX_REQUESTS_PER_WINDOW) {
+      return NextResponse.json({ error: 'تم تجاوز عدد الطلبات المؤقت. انتظر قليلًا ثم حاول مجددًا.' }, { status: 429 });
+    }
+    if (!window || now - window.startedAt >= WINDOW_MS) requestWindows.set(ip, { count: 1, startedAt: now });
+    else window.count += 1;
+
     const body: unknown = await request.json();
     if (!body || typeof body !== 'object' || !('prompt' in body) || typeof body.prompt !== 'string') return NextResponse.json({ error: 'الطلب غير صالح.' }, { status: 400 });
     const prompt = body.prompt.trim();
