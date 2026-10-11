@@ -64,7 +64,10 @@ export function validateProjectFiles(value: unknown): ProjectFile[] | null {
   };
   if (scripts) {
     for (const [name, command] of Object.entries(scripts)) {
-      if (typeof command !== 'string' || !allowedScripts[name]?.has(command.trim())) return null;
+      const allowed = Object.prototype.hasOwnProperty.call(allowedScripts, name)
+        ? allowedScripts[name]
+        : undefined;
+      if (typeof command !== 'string' || !allowed || !allowed.has(command.trim())) return null;
     }
   }
 
