@@ -24,5 +24,30 @@ export function validateProjectFiles(value: unknown): ProjectFile[] | null {
   }
   const required = ['package.json', 'index.html', 'src/main.tsx', 'src/App.tsx', 'src/styles.css'];
   if (!required.every((path) => seen.has(path))) return null;
+
+  // Generated projects are untrusted. Block package lifecycle hooks that can run
+  // automatically when a user installs dependencies or prepares the project.
+  const packageFile = files.find((file) => file.path === 'package.json');
+  if (!packageFile) return null;
+  let packageJson: unknown;
+  try {
+    packageJson = JSON.parse(packageFile.content);
+  } catch {
+    return null;
+  }
+  if (!packageJson || typeof packageJson !== 'object' || Array.isArray(packageJson)) return null;
+  const scripts = 'scripts' in packageJson ? packageJson.scripts : undefined;
+  if (scripts !== undefined && (!scripts || typeof scripts !== 'object' || Array.isArray(scripts))) return null;
+  const blockedLifecycleScripts = new Set([
+    'preinstall',
+    'install',
+    'postinstall',
+    'prepare',
+    'prepublish',
+    'prepublishOnly',
+    'dependencies',
+  ]);
+  if (scripts && Object.keys(scripts).some((script) => blockedLifecycleScripts.has(script))) return null;
+
   return files;
 }
