@@ -7,38 +7,13 @@ import { NextResponse } from 'next/server';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
+import { validateProjectFiles } from '@/lib/project-validation';
+
 const MAX_PROMPT_LENGTH = 12000;
-const MAX_FILES = 12;
-const MAX_FILE_LENGTH = 30000;
-const MAX_TOTAL_LENGTH = 100000;
 const WINDOW_MS = 10 * 60 * 1000;
 const MAX_REQUESTS_PER_WINDOW = 5;
 const requestWindows = new Map<string, { count: number; startedAt: number }>();
 // Process-local only; use a shared limiter before deploying multiple instances.
-const ALLOWED_PATH = /^(package\.json|index\.html|README\.md|vite\.config\.ts|tsconfig\.json|src\/[a-zA-Z0-9._/-]+\.(tsx?|jsx?|css|json|html|md))$/;
-
-type ProjectFile = { path: string; content: string };
-
-function validateFiles(value: unknown): ProjectFile[] | null {
-  if (!Array.isArray(value) || value.length < 2 || value.length > MAX_FILES) return null;
-  const seen = new Set<string>();
-  let total = 0;
-  const files: ProjectFile[] = [];
-  for (const item of value) {
-    if (!item || typeof item !== 'object' || !('path' in item) || !('content' in item)) return null;
-    const path = item.path;
-    const content = item.content;
-    if (typeof path !== 'string' || typeof content !== 'string') return null;
-    if (path.startsWith('/') || path.includes('..') || path.includes('\\') || !ALLOWED_PATH.test(path)) return null;
-    if (seen.has(path) || content.length > MAX_FILE_LENGTH) return null;
-    seen.add(path);
-    total += content.length;
-    if (total > MAX_TOTAL_LENGTH) return null;
-    files.push({ path, content });
-  }
-  if (!seen.has('package.json') || !seen.has('index.html')) return null;
-  return files;
-}
 
 export async function POST(request: Request) {
   try {
@@ -114,7 +89,7 @@ export async function POST(request: Request) {
     if (!parsed || typeof parsed !== 'object' || !('files' in parsed) || !('name' in parsed) || !('summary' in parsed)) {
       return NextResponse.json({ error: 'استجابة المشروع ناقصة. حاول مرة أخرى.' }, { status: 502 });
     }
-    const files = validateFiles(parsed.files);
+    const files = validateProjectFiles(parsed.files);
     if (!files) return NextResponse.json({ error: 'الملفات المولدة لم تجتز فحوص المسارات والحجم. أعد المحاولة بوصف أبسط.' }, { status: 502 });
 
     const name = typeof parsed.name === 'string' ? parsed.name.slice(0, 100) : 'مشروع جديد';
