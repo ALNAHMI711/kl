@@ -105,10 +105,8 @@ export async function POST(request: Request) {
       temperature: 0.2,
     });
 
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(result.text);
-    } catch {
+    const parsed = parseModelJson(result.text);
+    if (!parsed) {
       return NextResponse.json({ error: 'أعاد مزود الذكاء الاصطناعي تنسيقًا غير صالح. حاول مرة أخرى أو قلّل وصف المشروع.' }, { status: 502 });
     }
     if (!parsed || typeof parsed !== 'object' || !('files' in parsed) || !('name' in parsed) || !('summary' in parsed)) {
