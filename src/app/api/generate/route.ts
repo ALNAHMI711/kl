@@ -28,7 +28,7 @@ export async function POST(request: Request) {
     if (contentLength > 20000) return NextResponse.json({ error: 'حجم الطلب أكبر من الحد المسموح.' }, { status: 413 });
 
     const origin = request.headers.get('origin');
-    const host = request.headers.get('host');
+    const host = request.headers.get('host') || new URL(request.url).host;
     if (origin && host) {
       try {
         if (new URL(origin).host !== host) return NextResponse.json({ error: 'مصدر الطلب غير مسموح.' }, { status: 403 });
