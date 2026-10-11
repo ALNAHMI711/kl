@@ -51,6 +51,23 @@ export function validateProjectFiles(value: unknown): ProjectFile[] | null {
   ]);
   if (scripts && Object.keys(scripts).some((script) => blockedLifecycleScripts.has(script) || /^(pre|post).+/.test(script))) return null;
 
+  // Only permit conventional Vite/TypeScript tool commands. A generated project is
+  // untrusted input; arbitrary npm scripts can execute shell commands when run.
+  const allowedScripts: Record<string, Set<string>> = {
+    dev: new Set(['vite', 'vite --host 0.0.0.0']),
+    build: new Set(['vite build', 'tsc && vite build', 'tsc -b && vite build', 'tsc --noEmit && vite build']),
+    preview: new Set(['vite preview']),
+    start: new Set(['vite preview']),
+    typecheck: new Set(['tsc --noEmit', 'tsc -b']),
+    lint: new Set(['eslint .']),
+    test: new Set(['vitest run']),
+  };
+  if (scripts) {
+    for (const [name, command] of Object.entries(scripts)) {
+      if (typeof command !== 'string' || !allowedScripts[name]?.has(command.trim())) return null;
+    }
+  }
+
   // Generated package manifests must not pull executable dependencies from arbitrary
   // URLs, Git repositories, local paths, or npm aliases. Users still need to review
   // normal registry packages before running npm install.
