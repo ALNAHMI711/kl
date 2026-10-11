@@ -33,6 +33,14 @@ describe('POST /api/generate-project', () => {
     expect((await response.json()).error).toContain('OPENAI_API_KEY');
   });
 
+  it('rejects whitespace-only provider keys as missing', async () => {
+    vi.stubEnv('AI_PROVIDER', 'openai');
+    vi.stubEnv('OPENAI_API_KEY', '   ');
+    const response = await POST(request(JSON.stringify({ prompt: 'Create a responsive Arabic dashboard' })));
+    expect(response.status).toBe(503);
+    expect((await response.json()).error).toContain('OPENAI_API_KEY');
+  });
+
   it('rejects a mismatched browser origin', async () => {
     const response = await POST(request(
       JSON.stringify({ prompt: 'Create a responsive Arabic dashboard' }),
