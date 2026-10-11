@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { strToU8, zipSync } from 'fflate';
+import { validateProjectFiles } from '@/lib/project-validation';
 
 type ProjectFile = { path: string; content: string };
 type ProjectResult = { name: string; summary: string; files: ProjectFile[]; provider: string };
@@ -39,16 +40,18 @@ export default function Home() {
           if (typeof item.result === 'string') setResult(item.result.slice(0, 150000));
           if (item.project && typeof item.project === 'object') {
             const p = item.project as Record<string, unknown>;
-            if (typeof p.name === 'string' && typeof p.summary === 'string' && Array.isArray(p.files) &&
-                p.files.length <= 12 && p.files.every((file) => file && typeof file === 'object' &&
-                  typeof (file as Record<string, unknown>).path === 'string' &&
-                  typeof (file as Record<string, unknown>).content === 'string' &&
-                  ((file as Record<string, unknown>).content as string).length <= 30000)) {
-              setProject(item.project as ProjectResult);
+            const safeFiles = validateProjectFiles(p.files);
+            if (typeof p.name === 'string' && typeof p.summary === 'string' && safeFiles) {
+              setProject({
+                name: p.name.slice(0, 100),
+                summary: p.summary.slice(0, 2000),
+                files: safeFiles,
+                provider: typeof p.provider === 'string' ? p.provider.slice(0, 40) : 'restored',
+              });
             }
           }
           if (typeof item.selectedFile === 'string') setSelectedFile(item.selectedFile);
-          if (item.project || typeof item.result === 'string' && item.result.length > 0) {
+          if (item.project && typeof item.project === 'object' || typeof item.result === 'string' && item.result.length > 0) {
             setTab('code');
             setRestored(true);
           }
@@ -175,7 +178,7 @@ export default function Home() {
           <span className="brand-mark">✳</span>
           <span className="brand-copy"><strong>صانع</strong><small>AI BUILDER</small></span>
         </a>
-        <button className="new-project" type="button" onClick={() => { setPrompt(''); setProject(null); setResult(''); setError(''); }}>
+        <button className="new-project" type="button" onClick={() => { setPrompt(''); setProject(null); setResult(''); setError(''); setRestored(false); try { window.localStorage.removeItem('ai-builder:last-workspace:v1'); } catch { /* storage may be disabled */ } }}>
           <span>＋</span> مشروع جديد <kbd>⌘ K</kbd>
         </button>
         <div className="side-label">مساحة العمل</div>
@@ -231,7 +234,7 @@ export default function Home() {
 
           {hasOutput && !loading && (
             <section className="workspace">
-              <div className="workspace-heading"><div><div className="eyebrow">مساحة المشروع</div><h1>{project?.name || 'نموذج HTML'}</h1><p>{project?.summary || 'تم استلام نتيجة التوليد. راجع المخرجات قبل استخدامها.'}</p>{restored && <span className="saved-workspace-badge">✓ تمت استعادة آخر مساحة عمل من هذا المتصفح</span>}</div><div className="workspace-actions">{project && <button className="secondary-button" onClick={downloadProject} type="button">↓ تنزيل ZIP</button>}{result && <button className="secondary-button" onClick={downloadHtml} type="button">↓ تنزيل HTML</button>}<button className="primary-small" onClick={() => { setProject(null); setResult(''); setPrompt(''); setError(''); setRestored(false); }} type="button">＋ مشروع جديد</button></div></div>
+              <div className="workspace-heading"><div><div className="eyebrow">مساحة المشروع</div><h1>{project?.name || 'نموذج HTML'}</h1><p>{project?.summary || 'تم استلام نتيجة التوليد. راجع المخرجات قبل استخدامها.'}</p>{restored && <span className="saved-workspace-badge">✓ تمت استعادة آخر مساحة عمل من هذا المتصفح</span>}</div><div className="workspace-actions">{project && <button className="secondary-button" onClick={downloadProject} type="button">↓ تنزيل ZIP</button>}{result && <button className="secondary-button" onClick={downloadHtml} type="button">↓ تنزيل HTML</button>}<button className="primary-small" onClick={() => { setProject(null); setResult(''); setPrompt(''); setError(''); setRestored(false); try { window.localStorage.removeItem('ai-builder:last-workspace:v1'); } catch { /* storage may be disabled */ } }} type="button">＋ مشروع جديد</button></div></div>
               {error && <div className="notice error" role="alert">{error}</div>}
               <div className="workspace-frame">
                 <div className="frame-toolbar"><div className="window-dots"><i /><i /><i /></div><div className="workspace-tabs"><button className={tab === 'preview' ? 'active' : ''} onClick={() => setTab('preview')} type="button">◉ المعاينة</button><button className={tab === 'code' ? 'active' : ''} onClick={() => setTab('code')} type="button">{'</>'} الكود</button><button className={tab === 'files' ? 'active' : ''} onClick={() => setTab('files')} type="button">▤ الملفات</button></div><span className="frame-status"><i /> ملفات مولدة</span></div>
