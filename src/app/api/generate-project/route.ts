@@ -36,21 +36,27 @@ export async function POST(request: Request) {
       ? request.headers.get('x-real-ip')?.trim() || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
       : 'untrusted-client';
     const now = Date.now();
-    const window = requestWindows.get(ip);
+    let window = requestWindows.get(ip);
     if (window && now - window.startedAt < WINDOW_MS && window.count >= MAX_REQUESTS_PER_WINDOW) {
       return NextResponse.json({ error: 'تم تجاوز حد إنشاء المشاريع مؤقتًا. انتظر قليلًا ثم حاول مجددًا.' }, { status: 429 });
     }
-    if (!window || now - window.startedAt >= WINDOW_MS) requestWindows.set(ip, { count: 1, startedAt: now });
-    else window.count += 1;
-    // Bound memory use if the service receives many distinct client keys.
-    if (requestWindows.size > MAX_TRACKED_CLIENTS) {
+
+    // Remove expired entries before accepting a new client key so the map stays bounded.
+    if (!window && requestWindows.size >= MAX_TRACKED_CLIENTS) {
       for (const [key, entry] of requestWindows) {
         if (now - entry.startedAt >= WINDOW_MS) requestWindows.delete(key);
-        if (requestWindows.size <= MAX_TRACKED_CLIENTS) break;
+        if (requestWindows.size < MAX_TRACKED_CLIENTS) break;
       }
-      if (requestWindows.size > MAX_TRACKED_CLIENTS && !requestWindows.has(ip)) {
+      if (requestWindows.size >= MAX_TRACKED_CLIENTS) {
         return NextResponse.json({ error: 'الخدمة مشغولة مؤقتًا. حاول لاحقًا.' }, { status: 503 });
       }
+    }
+
+    if (!window || now - window.startedAt >= WINDOW_MS) {
+      window = { count: 1, startedAt: now };
+      requestWindows.set(ip, window);
+    } else {
+      window.count += 1;
     }
 
     const rawBody = await readTextBodyLimited(request, 20000);
