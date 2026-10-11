@@ -39,17 +39,13 @@ describe('validateProjectFiles', () => {
   });
 
   it('rejects a file over the per-file limit', () => {
-    expect(validateProjectFiles([
-      { path: 'package.json', content: 'x'.repeat(MAX_FILE_LENGTH + 1) },
-      validFiles[1],
-    ])).toBeNull();
+    const oversized = validFiles.map((file, index) => index === 0 ? { ...file, content: 'x'.repeat(MAX_FILE_LENGTH + 1) } : file);
+    expect(validateProjectFiles(oversized)).toBeNull();
   });
 
   it('rejects projects over the aggregate size limit', () => {
-    expect(validateProjectFiles([
-      { path: 'package.json', content: 'x'.repeat(MAX_TOTAL_LENGTH / 2) },
-      { path: 'index.html', content: 'y'.repeat(MAX_TOTAL_LENGTH / 2 + 1) },
-    ])).toBeNull();
+    const oversized = validFiles.map((file) => ({ ...file, content: 'x'.repeat(25000) }));
+    expect(validateProjectFiles(oversized)).toBeNull();
   });
 
   it('rejects malformed values', () => {
