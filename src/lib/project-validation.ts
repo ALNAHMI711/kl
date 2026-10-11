@@ -15,7 +15,7 @@ export function validateProjectFiles(value: unknown): ProjectFile[] | null {
     const path = item.path;
     const content = item.content;
     if (typeof path !== 'string' || typeof content !== 'string') return null;
-    if (path.startsWith('/') || path.includes('..') || path.includes('\\') || !ALLOWED_PATH.test(path)) return null;
+    if (path.startsWith('/') || path.includes('..') || path.includes('\\') || path.split('/').some((segment) => !segment || segment === '.') || !ALLOWED_PATH.test(path)) return null;
     if (seen.has(path) || content.length > MAX_FILE_LENGTH) return null;
     seen.add(path);
     total += content.length;
