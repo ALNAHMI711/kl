@@ -1,20 +1,16 @@
 'use client';
-
 import { useState } from 'react';
-
 const examples = ['أنشئ متجرًا إلكترونيًا عربيًا', 'أنشئ لوحة إدارة للمشاريع', 'أنشئ صفحة هبوط لمنتج جديد'];
-
 export default function Home() {
-  const [prompt, setPrompt] = useState('');
-  const [notice, setNotice] = useState('');
-  return <main className="shell">
-    <header className="topbar"><div className="brand"><span className="logo">✦</span><div><strong>AI Builder</strong><small>من فكرتك إلى مشروع ويب</small></div></div><span className="badge">نسخة أولية</span></header>
-    <section className="hero"><div className="eyebrow">✦ مساعدك لبناء التطبيقات</div><h1>ماذا تريد أن <span>تبني اليوم؟</span></h1><p>اكتب فكرتك، وحدد شكل الموقع أو التطبيق الذي تحتاجه. هذه الواجهة هي نقطة البداية للمنصة.</p>
-      <div className="composer"><textarea value={prompt} onChange={e=>setPrompt(e.target.value)} placeholder="صف الموقع أو التطبيق الذي تريد إنشاءه بالتفصيل..." rows={4}/><div className="composer-foot"><span>كلما كان الوصف أوضح، كانت النتيجة أفضل</span><button onClick={()=>setNotice(prompt.trim() ? 'الواجهة جاهزة، لكن توليد الملفات غير مفعّل حتى الآن. الخطوة التالية هي توصيل واجهة API آمنة للمزود وإضافة معاينة معزولة.' : 'اكتب وصفًا لفكرتك أولًا.')}>✦ ابدأ البناء</button></div></div>
-      {notice && <div className="notice" role="status">{notice}</div>}
-      <div className="examples"><span>جرّب فكرة:</span>{examples.map(x=><button key={x} className="chip" onClick={()=>setPrompt(x)}>{x}</button>)}</div>
-    </section>
-    <section className="grid"><article className="card"><div className="card-icon">⌘</div><h2>إنشاء المواقع</h2><p>صفحات هبوط ومتاجر ومواقع متجاوبة.</p><span className="state">واجهة أولية</span></article><article className="card"><div className="card-icon">▧</div><h2>إنشاء التطبيقات</h2><p>ابدأ بتطبيق ويب ثم أضف البيانات والوظائف.</p><span className="state">قيد التطوير</span></article><article className="card"><div className="card-icon">◈</div><h2>مفاتيح الذكاء الاصطناعي</h2><p>إعداد مزود الذكاء الاصطناعي بأمان على الخادم.</p><span className="state">لم تُربط بعد</span></article></section>
-    <footer>منصة قيد التطوير · لا تضع مفاتيح API في الواجهة أو داخل المستودع.</footer>
-  </main>;
+ const [prompt,setPrompt]=useState(''); const [result,setResult]=useState(''); const [error,setError]=useState(''); const [loading,setLoading]=useState(false);
+ async function build(){ setError('');setResult(''); if(prompt.trim().length<10){setError('اكتب وصفًا واضحًا (10 أحرف على الأقل).');return;} setLoading(true); try { const response=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt})}); const data=await response.json(); if(!response.ok)throw new Error(data.error||'تعذر الإنشاء');setResult(data.text); } catch(e){setError(e instanceof Error?e.message:'حدث خطأ غير متوقع.');} finally{setLoading(false);} }
+ function downloadHtml(){ const tick=String.fromCharCode(96); const re=new RegExp(tick+tick+tick+'html\\s*([\\s\\S]*?)'+tick+tick+tick,'i'); const match=result.match(re); if(!match){setError('لم أجد كتلة HTML في النتيجة. حاول مرة أخرى.');return;} const url=URL.createObjectURL(new Blob([match[1]],{type:'text/html;charset=utf-8'}));const a=document.createElement('a');a.href=url;a.download='ai-builder-prototype.html';a.click();URL.revokeObjectURL(url); }
+ return <main className="shell"><header className="topbar"><div className="brand"><span className="logo">✦</span><div><strong>AI Builder</strong><small>من فكرتك إلى نموذج ويب</small></div></div><span className="badge">نسخة تجريبية</span></header>
+ <section className="hero"><div className="eyebrow">✦ مساعدك لبناء المواقع</div><h1>ماذا تريد أن <span>تبني اليوم؟</span></h1><p>اكتب فكرتك وسيحاول الذكاء الاصطناعي إنشاء نموذج HTML أولي قابل للتنزيل.</p>
+ <div className="composer"><textarea value={prompt} onChange={e=>setPrompt(e.target.value)} placeholder="صف الموقع أو التطبيق الذي تريد إنشاءه..." rows={4} maxLength={12000}/><div className="composer-foot"><span>{prompt.length}/12000 حرف</span><button disabled={loading} onClick={build}>{loading?'جارٍ الإنشاء…':'✦ ابدأ البناء'}</button></div></div>
+ {error&&<div className="notice error" role="alert">{error}</div>}{loading&&<div className="notice" role="status">جارٍ إنشاء النموذج، قد يستغرق ذلك بعض الوقت…</div>}
+ <div className="examples"><span>جرّب فكرة:</span>{examples.map(x=><button key={x} className="chip" onClick={()=>setPrompt(x)}>{x}</button>)}</div></section>
+ {result&&<section className="result"><div className="result-head"><div><h2>نتيجة الإنشاء</h2><p>راجع النموذج قبل استخدامه في الإنتاج.</p></div><button className="download" onClick={downloadHtml}>تنزيل HTML</button></div><pre dir="auto">{result}</pre></section>}
+ <section className="grid"><article className="card"><div className="card-icon">⌘</div><h2>إنشاء المواقع</h2><p>توليد نموذج HTML أولي من وصفك.</p><span className="state">توليد أولي</span></article><article className="card"><div className="card-icon">▧</div><h2>التطبيقات المتكاملة</h2><p>تحتاج ملفات متعددة وبيئة تشغيل معزولة وقاعدة بيانات.</p><span className="state">قيد التطوير</span></article><article className="card"><div className="card-icon">◈</div><h2>مفاتيح الذكاء الاصطناعي</h2><p>تُقرأ المفاتيح من الخادم فقط ولا تظهر في المتصفح.</p><span className="state">إعداد خادمي</span></article></section>
+ <footer>لا تضع مفاتيح API في الواجهة أو داخل المستودع. راجع الأكواد المولدة قبل النشر.</footer></main>;
 }
