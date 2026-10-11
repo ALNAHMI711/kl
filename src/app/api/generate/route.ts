@@ -86,7 +86,18 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({ text: result.text, provider: result.provider });
   } catch (error) {
-    console.error('AI generation failed:', error instanceof Error ? error.message : 'Unknown error');
+    if (error instanceof Error && error.message === 'No configured AI provider keys') {
+      const selected = (process.env.AI_PROVIDER || 'openai').trim().toLowerCase();
+      const message = selected === 'auto'
+        ? 'أضف مفتاحًا صالحًا واحدًا على الأقل من OPENAI_API_KEY أو ANTHROPIC_API_KEY أو GOOGLE_GENERATIVE_AI_API_KEY.'
+        : selected === 'anthropic'
+          ? 'أضف ANTHROPIC_API_KEY في إعدادات البيئة على الخادم.'
+          : selected === 'google'
+            ? 'أضف GOOGLE_GENERATIVE_AI_API_KEY في إعدادات البيئة على الخادم.'
+            : 'أضف OPENAI_API_KEY في إعدادات البيئة على الخادم.';
+      return NextResponse.json({ error: message }, { status: 503 });
+    }
+    console.error('AI generation failed:', error instanceof Error ? error.name : 'UnknownError');
     return NextResponse.json({ error: 'تعذر إنشاء النموذج. تحقق من المفتاح وحدود الاستخدام ثم أعد المحاولة.' }, { status: 502 });
   }
 }
