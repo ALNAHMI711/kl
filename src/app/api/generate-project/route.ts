@@ -5,6 +5,7 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { NextResponse } from 'next/server';
 import { readTextBodyLimited } from '@/lib/read-limited-body';
 import { validateProjectFiles } from '@/lib/project-validation';
+import { parseModelJson } from '@/lib/parse-model-json';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
