@@ -111,6 +111,13 @@ export default function Home() {
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
+  const htmlPreview = useMemo(() => {
+    if (!result) return '';
+    const tick = String.fromCharCode(96);
+    const pattern = new RegExp(tick + tick + tick + 'html\\s*([\\s\\S]*?)' + tick + tick + tick, 'i');
+    return result.match(pattern)?.[1] || '';
+  }, [result]);
+
   const hasOutput = Boolean(project || result);
 
   return (
@@ -180,7 +187,7 @@ export default function Home() {
               {error && <div className="notice error" role="alert">{error}</div>}
               <div className="workspace-frame">
                 <div className="frame-toolbar"><div className="window-dots"><i /><i /><i /></div><div className="workspace-tabs"><button className={tab === 'preview' ? 'active' : ''} onClick={() => setTab('preview')} type="button">◉ المعاينة</button><button className={tab === 'code' ? 'active' : ''} onClick={() => setTab('code')} type="button">{'</>'} الكود</button><button className={tab === 'files' ? 'active' : ''} onClick={() => setTab('files')} type="button">▤ الملفات</button></div><span className="frame-status"><i /> ملفات مولدة</span></div>
-                {tab === 'preview' && <div className="preview-placeholder"><div className="preview-symbol">▧</div><h2>المعاينة الآمنة قيد التجهيز</h2><p>لم يتم تشغيل الكود المولد داخل المتصفح. افتح تبويب الكود لمراجعته أو نزّل الملفات.</p><button className="secondary-button" onClick={() => setTab('code')} type="button">عرض الكود <span>←</span></button></div>}
+                {tab === 'preview' && (result && htmlPreview ? <div className="html-preview-wrap"><div className="preview-safety-note">معاينة HTML ثابتة — تم تعطيل صلاحيات JavaScript داخل الإطار.</div><iframe className="html-preview-frame" title="معاينة HTML المولّد" sandbox="" referrerPolicy="no-referrer" srcDoc={htmlPreview} /></div> : <div className="preview-placeholder"><div className="preview-symbol">▧</div><h2>المعاينة التفاعلية للمشروع قيد التجهيز</h2><p>{project ? 'المشروع متعدد الملفات يحتاج بيئة بناء معزولة قبل عرضه. يمكنك مراجعة الملفات أو تنزيلها الآن.' : 'لم نعثر على كتلة HTML صالحة للمعاينة. افتح تبويب الكود لمراجعة النتيجة.'}</p><button className="secondary-button" onClick={() => setTab(project ? 'files' : 'code')} type="button">عرض {project ? 'الملفات' : 'الكود'} <span>←</span></button></div>)}
                 {tab === 'code' && <div className="code-view"><div className="code-file-list">{(project?.files || []).map((file) => <button type="button" key={file.path} className={activeFile?.path === file.path ? 'file-item active' : 'file-item'} onClick={() => setSelectedFile(file.path)}><span>◇</span>{file.path}</button>)}</div><div className="code-editor"><div className="editor-title"><span>◇</span>{activeFile?.path || 'نتيجة التوليد'}<span className="read-only">قراءة فقط</span><button className="copy-code-button" type="button" onClick={copyActiveCode}>{copied ? 'تم النسخ ✓' : 'نسخ الكود'}</button></div><pre dir="ltr">{activeFile?.content || result || 'لا توجد ملفات لعرضها.'}</pre></div></div>}
                 {tab === 'files' && <div className="files-view">{project?.files.map((file) => <button type="button" key={file.path} className="file-row" onClick={() => { setSelectedFile(file.path); setTab('code'); }}><span className="file-type">◇</span><span><strong>{file.path}</strong><small>{file.content.length.toLocaleString('en-US')} حرف</small></span><b>فتح ←</b></button>) || <p className="empty-result">هذه النتيجة نص HTML وليست مشروع ملفات متعددًا. يمكنك تنزيلها من الأعلى.</p>}</div>}
               </div>
