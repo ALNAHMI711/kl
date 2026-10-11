@@ -62,7 +62,7 @@ export function validateProjectFiles(value: unknown): ProjectFile[] | null {
     for (const [name, version] of Object.entries(section)) {
       if (!/^(@[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+|[a-zA-Z0-9._-]+)$/.test(name)) return null;
       if (typeof version !== 'string' || !version.trim()) return null;
-      if (/^(https?:|git\+|git:|ssh:|github:|file:|link:|workspace:|npm:|\\.\\.?\/|\/)/i.test(version.trim())) return null;
+      if (/^(https?:|git\+|git:|ssh:|github:|file:|link:|workspace:|npm:|\.\.?\/|\/)/i.test(version.trim())) return null;
     }
   }
 
