@@ -51,5 +51,20 @@ export function validateProjectFiles(value: unknown): ProjectFile[] | null {
   ]);
   if (scripts && Object.keys(scripts).some((script) => blockedLifecycleScripts.has(script) || /^(pre|post).+/.test(script))) return null;
 
+  // Generated package manifests must not pull executable dependencies from arbitrary
+  // URLs, Git repositories, local paths, or npm aliases. Users still need to review
+  // normal registry packages before running npm install.
+  const manifest = packageJson as Record<string, unknown>;
+  for (const sectionName of ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies']) {
+    const section = manifest[sectionName];
+    if (section === undefined) continue;
+    if (!section || typeof section !== 'object' || Array.isArray(section)) return null;
+    for (const [name, version] of Object.entries(section)) {
+      if (!/^(@[a-zA-Z0-9._-]+\\/[a-zA-Z0-9._-]+|[a-zA-Z0-9._-]+)$/.test(name)) return null;
+      if (typeof version !== 'string' || !version.trim()) return null;
+      if (/^(https?:|git\\+|git:|ssh:|github:|file:|link:|workspace:|npm:|\\.\\.?\\/|\\/)/i.test(version.trim())) return null;
+    }
+  }
+
   return files;
 }
