@@ -45,6 +45,21 @@ describe('GET /api/health', () => {
     expect(body.providerConfigured).toBe(false);
   });
 
+  it('reports ready in auto mode when at least one provider is configured', async () => {
+    vi.stubEnv('AI_PROVIDER', 'auto');
+    vi.stubEnv('OPENAI_API_KEY', '');
+    vi.stubEnv('ANTHROPIC_API_KEY', '');
+    vi.stubEnv('GOOGLE_GENERATIVE_AI_API_KEY', 'test-google-key');
+    const response = await GET();
+    const body = await response.json();
+
+    expect(body.ready).toBe(true);
+    expect(body.provider).toBe('auto');
+    expect(body.providerConfigured).toBe(true);
+    expect(body.configuredProviderCount).toBe(1);
+    expect(JSON.stringify(body)).not.toContain('test-google-key');
+  });
+
   it('marks an unsupported provider as not ready without disclosing configuration', async () => {
     vi.stubEnv('AI_PROVIDER', 'unknown-provider');
     const response = await GET();
