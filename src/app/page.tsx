@@ -42,7 +42,7 @@ export default function Home() {
     if (!match) { setError('لم أجد كتلة HTML في النتيجة. حاول مرة أخرى.'); return; }
     const url = URL.createObjectURL(new Blob([match[1]], { type: 'text/html;charset=utf-8' }));
     const a = document.createElement('a'); a.href = url; a.download = 'ai-builder-prototype.html'; a.click();
-    URL.revokeObjectURL(url);
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
   function downloadProject() {
