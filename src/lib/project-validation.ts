@@ -49,7 +49,7 @@ export function validateProjectFiles(value: unknown): ProjectFile[] | null {
     'prepublishOnly',
     'dependencies',
   ]);
-  if (scripts && Object.keys(scripts).some((script) => blockedLifecycleScripts.has(script))) return null;
+  if (scripts && Object.keys(scripts).some((script) => blockedLifecycleScripts.has(script) || /^(pre|post).+/.test(script))) return null;
 
   return files;
 }
