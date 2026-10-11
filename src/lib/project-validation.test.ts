@@ -72,6 +72,39 @@ describe('validateProjectFiles', () => {
     expect(validateProjectFiles(oversized)).toBeNull();
   });
 
+  it('rejects dependency sources that point to URLs, Git, local paths, or npm aliases', () => {
+    const withPackage = (packageContent: string) =>
+      validFiles.map((file) => file.path === 'package.json' ? { ...file, content: packageContent } : file);
+
+    for (const version of [
+      'https://example.invalid/pkg.tgz',
+      'git+https://example.invalid/repo.git',
+      'github:someone/suspicious-package',
+      'file:../local-package',
+      '../local-package',
+      'npm:other-package@1.0.0',
+    ]) {
+      expect(validateProjectFiles(withPackage(JSON.stringify({ dependencies: { 'sample-package': version } })))).toBeNull();
+    }
+  });
+
+  it('allows ordinary registry dependency versions', () => {
+    const files = validFiles.map((file) =>
+      file.path === 'package.json'
+        ? { ...file, content: JSON.stringify({ dependencies: { react: '^19.0.0', 'react-dom': '^19.0.0' }, devDependencies: { vite: '^6.0.0' } }) }
+        : file
+    );
+    expect(validateProjectFiles(files)).toEqual(files);
+  });
+
+  it('rejects malformed dependency sections and versions', () => {
+    const withPackage = (packageContent: string) =>
+      validFiles.map((file) => file.path === 'package.json' ? { ...file, content: packageContent } : file);
+    expect(validateProjectFiles(withPackage(JSON.stringify({ dependencies: [] })))).toBeNull();
+    expect(validateProjectFiles(withPackage(JSON.stringify({ dependencies: { react: 123 } })))).toBeNull();
+    expect(validateProjectFiles(withPackage(JSON.stringify({ dependencies: { 'bad name': '^1.0.0' } })))).toBeNull();
+  });
+
   it('rejects malformed values', () => {
     expect(validateProjectFiles(null)).toBeNull();
     expect(validateProjectFiles([null, ...validFiles])).toBeNull();
