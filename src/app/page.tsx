@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { strToU8, zipSync } from 'fflate';
 
 type ProjectFile = { path: string; content: string };
 type ProjectResult = { name: string; summary: string; files: ProjectFile[]; provider: string };
@@ -46,9 +47,16 @@ export default function Home() {
 
   function downloadProject() {
     if (!project) return;
-    const bundle = { format: 'ai-builder-project-v1', name: project.name, summary: project.summary, generatedAt: new Date().toISOString(), files: project.files };
-    const url = URL.createObjectURL(new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json;charset=utf-8' }));
-    const a = document.createElement('a'); a.href = url; a.download = 'ai-builder-project.json'; a.click();
+    const files: Record<string, Uint8Array> = {};
+    for (const file of project.files) files[file.path] = strToU8(file.content);
+    files['AI-BUILDER-README.txt'] = strToU8(
+      'Generated project: ' + project.name + '\\n' +
+      project.summary + '\\n\\n' +
+      'Review generated code before running. Install dependencies with npm install. This project has not been security-audited or tested.'
+    );
+    const zipped = zipSync(files, { level: 6 });
+    const url = URL.createObjectURL(new Blob([zipped.buffer as ArrayBuffer], { type: 'application/zip' }));
+    const a = document.createElement('a'); a.href = url; a.download = 'ai-builder-project.zip'; a.click();
     URL.revokeObjectURL(url);
   }
 
@@ -64,9 +72,9 @@ export default function Home() {
       {loading && <div className="notice" role="status">جارٍ إنشاء الملفات ومراجعة المسارات والأحجام…</div>}
       <div className="examples"><span>جرّب فكرة:</span>{examples.map(x => <button key={x} className="chip" onClick={() => setPrompt(x)}>{x}</button>)}</div>
     </section>
-    {project && <section className="result"><div className="result-head"><div><h2>{project.name}</h2><p>{project.summary}</p><p>المزود: {project.provider} · عدد الملفات: {project.files.length}</p></div><button className="download" onClick={downloadProject}>تنزيل حزمة JSON</button></div>
+    {project && <section className="result"><div className="result-head"><div><h2>{project.name}</h2><p>{project.summary}</p><p>المزود: {project.provider} · عدد الملفات: {project.files.length}</p></div><button className="download" onClick={downloadProject}>تنزيل المشروع ZIP</button></div>
       <div className="file-list">{project.files.map(file => <details key={file.path}><summary>{file.path}</summary><pre dir="ltr">{file.content}</pre></details>)}</div>
-      <p className="notice">هذه حزمة ملفات JSON وليست ZIP قابلة للتشغيل مباشرة. راجع الملفات وثبّت التبعيات وشغّل الاختبارات قبل النشر؛ لا توجد معاينة معزولة أو نشر تلقائي حتى الآن.</p>
+      <p className="notice">تم إنشاء ملف ZIP من الملفات الظاهرة أعلاه. راجع الكود وثبّت التبعيات وشغّل الاختبارات قبل النشر؛ لا توجد معاينة معزولة أو نشر تلقائي حتى الآن.</p>
     </section>}
     {result && <section className="result"><div className="result-head"><div><h2>نتيجة الإنشاء</h2><p>راجع النموذج قبل استخدامه في الإنتاج.</p></div><button className="download" onClick={downloadHtml}>تنزيل HTML</button></div><pre dir="auto">{result}</pre></section>}
     <section className="grid"><article className="card"><div className="card-icon">⌘</div><h2>مشاريع متعددة الملفات</h2><p>توليد ملفات أولية مع فحص المسارات وحدود الحجم.</p><span className="state">تجريبي</span></article><article className="card"><div className="card-icon">▧</div><h2>التشغيل والمعاينة</h2><p>تشغيل الكود المولد في بيئة معزولة ونشره يحتاجان مراحل إضافية.</p><span className="state">قيد التطوير</span></article><article className="card"><div className="card-icon">◈</div><h2>مفاتيح الذكاء الاصطناعي</h2><p>تُقرأ المفاتيح من الخادم فقط ولا تظهر في المتصفح.</p><span className="state">إعداد خادمي</span></article></section>
