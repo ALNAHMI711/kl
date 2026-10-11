@@ -30,6 +30,20 @@ export default function Home() {
   const [hydrated, setHydrated] = useState(false);
   const [restored, setRestored] = useState(false);
   const [savedWorkspaces, setSavedWorkspaces] = useState<SavedWorkspace[]>([]);
+  const [serviceReady, setServiceReady] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch('/api/health', { cache: 'no-store', signal: controller.signal })
+      .then(async (response) => {
+        const data: unknown = await response.json();
+        setServiceReady(response.ok && Boolean(data && typeof data === 'object' && 'ready' in data && data.ready === true));
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setServiceReady(false);
+      });
+    return () => controller.abort();
+  }, []);
 
   useEffect(() => {
     try {
@@ -296,7 +310,7 @@ export default function Home() {
       <section className="main-area">
         <header className="topbar">
           <div className="breadcrumbs"><span>مساحة العمل</span><b>/</b><strong>{project?.name || 'مشروع جديد'}</strong></div>
-          <div className="top-actions"><span className="connection"><i /> الواجهة متصلة</span><button className="icon-button" type="button" aria-label="الإعدادات">⚙</button><div className="avatar small-avatar">م</div></div>
+          <div className="top-actions"><span className="connection"><i /> {serviceReady === null ? "جارٍ فحص الخدمة" : serviceReady ? "خدمة الذكاء جاهزة" : "مفتاح الذكاء غير مضبوط"}</span><button className="icon-button" type="button" aria-label="الإعدادات">⚙</button><div className="avatar small-avatar">م</div></div>
         </header>
 
         <div className="content">
