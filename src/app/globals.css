@@ -45,3 +45,6 @@ button:disabled{opacity:.55;cursor:wait}
 @media(max-width:600px){.html-preview-wrap{min-height:360px}.html-preview-frame{height:430px}}
 
 .saved-workspace-badge{display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:5px 9px;border:1px solid #8be0c440;border-radius:7px;color:var(--mint);font-size:11px;background:#8be0c40b}
+
+
+.saved-project-list{display:grid;gap:5px;margin:8px 0;max-height:260px;overflow:auto}.saved-project-item{display:flex;align-items:center;gap:4px;min-width:0;border:1px solid transparent;border-radius:8px}.saved-project-item:hover{background:#ffffff08;border-color:#ffffff0d}.saved-project-open{display:flex;align-items:center;gap:8px;flex:1;min-width:0;padding:9px 8px;border:0;background:transparent;color:var(--text);text-align:right;font-size:11px;cursor:pointer}.saved-project-open span:first-child{color:var(--mint);flex:none}.saved-project-open span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.saved-project-delete{flex:none;width:28px;height:28px;border:0;border-radius:6px;background:transparent;color:#8290a4;font-size:18px;cursor:pointer}.saved-project-delete:hover{background:#ff6b6b18;color:#ff8d8d}.saved-project-open:focus-visible,.saved-project-delete:focus-visible{outline:2px solid var(--mint);outline-offset:-2px}.saved-project-item .saved-project-open{min-height:38px}
