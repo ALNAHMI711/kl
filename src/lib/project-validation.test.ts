@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_FILE_LENGTH, MAX_FILES, MAX_TOTAL_LENGTH, validateProjectFiles } from './project-validation';
+import { MAX_FILE_LENGTH, MAX_FILES, validateProjectFiles } from './project-validation';
 
 const validFiles = [
   { path: 'package.json', content: '{"scripts":{"dev":"vite"}}' },
