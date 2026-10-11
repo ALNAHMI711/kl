@@ -7,11 +7,11 @@ export async function GET() {
   const provider = (process.env.AI_PROVIDER || 'openai').toLowerCase();
   const supported = ['openai', 'anthropic', 'google'].includes(provider);
   const configured = provider === 'openai'
-    ? Boolean(process.env.OPENAI_API_KEY)
+    ? Boolean(process.env.OPENAI_API_KEY?.trim())
     : provider === 'anthropic'
-      ? Boolean(process.env.ANTHROPIC_API_KEY)
+      ? Boolean(process.env.ANTHROPIC_API_KEY?.trim())
       : provider === 'google'
-        ? Boolean(process.env.GOOGLE_GENERATIVE_AI_API_KEY)
+        ? Boolean(process.env.GOOGLE_GENERATIVE_AI_API_KEY?.trim())
         : false;
 
   return NextResponse.json(
