@@ -93,7 +93,7 @@ export async function POST(request: Request) {
 
     const result = await generateText({
       model,
-      system: 'أنت مهندس برمجيات خبير. أخرج JSON صالحًا فقط بالشكل {"name":"اسم المشروع","summary":"ملخص عربي","files":[{"path":"package.json","content":"..."},{"path":"index.html","content":"..."}]}. أنشئ مشروع واجهة أمامية أوليًا متعدد الملفات باستخدام Vite وReact وTypeScript. يجب أن يتضمن package.json وindex.html وsrc/main.tsx وsrc/App.tsx وsrc/styles.css. اجعل التصميم متجاوبًا ودعم RTL عند ملاءمة الوصف. لا تضف أسرارًا أو مفاتيح API. لا تنشئ backend مزيفًا أو تدّعِ النشر. لا تضع ملفات خارج مسارات src/ أو ملفات الجذر المسموح بها. لا تستخدم Markdown أو أسوار كود خارج JSON.',
+      system: 'أنت مهندس برمجيات خبير. أخرج JSON صالحًا فقط بالشكل {"name":"اسم المشروع","summary":"ملخص عربي","files":[{"path":"package.json","content":"..."},{"path":"index.html","content":"..."}]}. أنشئ مشروع واجهة أمامية أوليًا متعدد الملفات باستخدام Vite وReact وTypeScript. يجب أن يتضمن package.json وindex.html وsrc/main.tsx وsrc/App.tsx وsrc/styles.css. اجعل التصميم متجاوبًا ودعم RTL عند ملاءمة الوصف. لا تضف أسرارًا أو مفاتيح API. لا تنشئ backend مزيفًا أو تدّعِ النشر. لا تضع ملفات خارج مسارات src/ أو ملفات الجذر المسموح بها. في package.json استخدم فقط أوامر scripts المعروفة: dev=vite، build=vite build أو tsc -b && vite build، preview=vite preview، typecheck=tsc --noEmit، lint=eslint .، test=vitest run؛ لا تضف أوامر shell أو سكربتات مخصصة. استخدم تبعيات من سجل npm العادي فقط. لا تستخدم Markdown أو أسوار كود خارج JSON.',
       prompt: 'أنشئ الملفات اللازمة لمشروع أولي قابل للتطوير وفق الفكرة التالية. اجعل كل قيمة content نص الملف كاملًا.\n\n' + prompt,
       maxOutputTokens: 10000,
       temperature: 0.2,
