@@ -23,6 +23,7 @@ export default function Home() {
   const [mode, setMode] = useState<'project' | 'html'>('project');
   const [tab, setTab] = useState<WorkspaceTab>('preview');
   const [selectedFile, setSelectedFile] = useState('');
+  const [copied, setCopied] = useState(false);
 
   const activeFile = useMemo(() => {
     if (!project) return undefined;
@@ -59,6 +60,21 @@ export default function Home() {
       setError(e instanceof Error ? e.message : 'حدث خطأ غير متوقع.');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function copyActiveCode() {
+    const code = activeFile?.content || result;
+    if (!code) {
+      setError('لا يوجد كود لنسخه حاليًا.');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setError('تعذر النسخ تلقائيًا. حدّد الكود وانسخه يدويًا.');
     }
   }
 
@@ -165,7 +181,7 @@ export default function Home() {
               <div className="workspace-frame">
                 <div className="frame-toolbar"><div className="window-dots"><i /><i /><i /></div><div className="workspace-tabs"><button className={tab === 'preview' ? 'active' : ''} onClick={() => setTab('preview')} type="button">◉ المعاينة</button><button className={tab === 'code' ? 'active' : ''} onClick={() => setTab('code')} type="button">{'</>'} الكود</button><button className={tab === 'files' ? 'active' : ''} onClick={() => setTab('files')} type="button">▤ الملفات</button></div><span className="frame-status"><i /> ملفات مولدة</span></div>
                 {tab === 'preview' && <div className="preview-placeholder"><div className="preview-symbol">▧</div><h2>المعاينة الآمنة قيد التجهيز</h2><p>لم يتم تشغيل الكود المولد داخل المتصفح. افتح تبويب الكود لمراجعته أو نزّل الملفات.</p><button className="secondary-button" onClick={() => setTab('code')} type="button">عرض الكود <span>←</span></button></div>}
-                {tab === 'code' && <div className="code-view"><div className="code-file-list">{(project?.files || []).map((file) => <button type="button" key={file.path} className={activeFile?.path === file.path ? 'file-item active' : 'file-item'} onClick={() => setSelectedFile(file.path)}><span>◇</span>{file.path}</button>)}</div><div className="code-editor"><div className="editor-title"><span>◇</span>{activeFile?.path || 'نتيجة التوليد'}<span className="read-only">قراءة فقط</span></div><pre dir="ltr">{activeFile?.content || result || 'لا توجد ملفات لعرضها.'}</pre></div></div>}
+                {tab === 'code' && <div className="code-view"><div className="code-file-list">{(project?.files || []).map((file) => <button type="button" key={file.path} className={activeFile?.path === file.path ? 'file-item active' : 'file-item'} onClick={() => setSelectedFile(file.path)}><span>◇</span>{file.path}</button>)}</div><div className="code-editor"><div className="editor-title"><span>◇</span>{activeFile?.path || 'نتيجة التوليد'}<span className="read-only">قراءة فقط</span><button className="copy-code-button" type="button" onClick={copyActiveCode}>{copied ? 'تم النسخ ✓' : 'نسخ الكود'}</button></div><pre dir="ltr">{activeFile?.content || result || 'لا توجد ملفات لعرضها.'}</pre></div></div>}
                 {tab === 'files' && <div className="files-view">{project?.files.map((file) => <button type="button" key={file.path} className="file-row" onClick={() => { setSelectedFile(file.path); setTab('code'); }}><span className="file-type">◇</span><span><strong>{file.path}</strong><small>{file.content.length.toLocaleString('en-US')} حرف</small></span><b>فتح ←</b></button>) || <p className="empty-result">هذه النتيجة نص HTML وليست مشروع ملفات متعددًا. يمكنك تنزيلها من الأعلى.</p>}</div>}
               </div>
               <div className="workspace-footnote"><span>ⓘ</span> المخرجات لم تجتز بعد بناءً فعليًا أو مراجعة أمنية كاملة. لا تشغّل ملفات غير موثوقة.</div>
