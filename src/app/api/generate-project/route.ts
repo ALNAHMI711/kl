@@ -11,6 +11,10 @@ const MAX_PROMPT_LENGTH = 12000;
 const MAX_FILES = 12;
 const MAX_FILE_LENGTH = 30000;
 const MAX_TOTAL_LENGTH = 100000;
+const WINDOW_MS = 10 * 60 * 1000;
+const MAX_REQUESTS_PER_WINDOW = 5;
+const requestWindows = new Map<string, { count: number; startedAt: number }>();
+// Process-local only; use a shared limiter before deploying multiple instances.
 const ALLOWED_PATH = /^(package\.json|index\.html|README\.md|vite\.config\.ts|tsconfig\.json|src\/[a-zA-Z0-9._/-]+\.(tsx?|jsx?|css|json|html|md))$/;
 
 type ProjectFile = { path: string; content: string };
@@ -51,7 +55,26 @@ export async function POST(request: Request) {
       }
     }
 
-    const body: unknown = await request.json();
+    const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
+    const ip = request.headers.get('x-real-ip') || forwarded || 'unknown';
+    const now = Date.now();
+    const window = requestWindows.get(ip);
+    if (window && now - window.startedAt < WINDOW_MS && window.count >= MAX_REQUESTS_PER_WINDOW) {
+      return NextResponse.json({ error: 'تم تجاوز حد إنشاء المشاريع مؤقتًا. انتظر قليلًا ثم حاول مجددًا.' }, { status: 429 });
+    }
+    if (!window || now - window.startedAt >= WINDOW_MS) requestWindows.set(ip, { count: 1, startedAt: now });
+    else window.count += 1;
+
+    const rawBody = await request.text();
+    if (new TextEncoder().encode(rawBody).byteLength > 20000) {
+      return NextResponse.json({ error: 'حجم الطلب أكبر من الحد المسموح.' }, { status: 413 });
+    }
+    let body: unknown;
+    try {
+      body = JSON.parse(rawBody);
+    } catch {
+      return NextResponse.json({ error: 'صيغة JSON غير صالحة.' }, { status: 400 });
+    }
     if (!body || typeof body !== 'object' || !('prompt' in body) || typeof body.prompt !== 'string') {
       return NextResponse.json({ error: 'الطلب غير صالح.' }, { status: 400 });
     }
