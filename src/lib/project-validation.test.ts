@@ -30,6 +30,24 @@ describe('validateProjectFiles', () => {
     expect(validateProjectFiles([...validFiles, { path: 'public/evil.js', content: 'x' }])).toBeNull();
   });
 
+  it('rejects malformed package.json and automatic lifecycle scripts', () => {
+    const withPackage = (packageContent: string) =>
+      validFiles.map((file) => file.path === 'package.json' ? { ...file, content: packageContent } : file);
+
+    expect(validateProjectFiles(withPackage('{invalid json'))).toBeNull();
+    expect(validateProjectFiles(withPackage(JSON.stringify({ scripts: { postinstall: 'node suspicious.js' } })))).toBeNull();
+    expect(validateProjectFiles(withPackage(JSON.stringify({ scripts: { prepare: 'node setup.js' } })))).toBeNull();
+  });
+
+  it('allows ordinary development scripts in package.json', () => {
+    const files = validFiles.map((file) =>
+      file.path === 'package.json'
+        ? { ...file, content: JSON.stringify({ scripts: { dev: 'vite', build: 'tsc && vite build' } }) }
+        : file
+    );
+    expect(validateProjectFiles(files)).toEqual(files);
+  });
+
   it('rejects duplicate paths', () => {
     expect(validateProjectFiles([...validFiles, { path: 'src/main.tsx', content: 'duplicate' }])).toBeNull();
   });
