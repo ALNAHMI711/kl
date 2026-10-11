@@ -54,7 +54,7 @@ export function validateProjectFiles(value: unknown): ProjectFile[] | null {
   // Only permit conventional Vite/TypeScript tool commands. A generated project is
   // untrusted input; arbitrary npm scripts can execute shell commands when run.
   const allowedScripts: Record<string, Set<string>> = {
-    dev: new Set(['vite', 'vite --host 0.0.0.0']),
+    dev: new Set(['vite']),
     build: new Set(['vite build', 'tsc && vite build', 'tsc -b && vite build', 'tsc --noEmit && vite build']),
     preview: new Set(['vite preview']),
     start: new Set(['vite preview']),
