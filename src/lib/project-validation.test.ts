@@ -37,6 +37,8 @@ describe('validateProjectFiles', () => {
     expect(validateProjectFiles(withPackage('{invalid json'))).toBeNull();
     expect(validateProjectFiles(withPackage(JSON.stringify({ scripts: { postinstall: 'node suspicious.js' } })))).toBeNull();
     expect(validateProjectFiles(withPackage(JSON.stringify({ scripts: { prepare: 'node setup.js' } })))).toBeNull();
+    expect(validateProjectFiles(withPackage(JSON.stringify({ scripts: { preprepare: 'node before.js' } })))).toBeNull();
+    expect(validateProjectFiles(withPackage(JSON.stringify({ scripts: { postprepare: 'node after.js' } })))).toBeNull();
   });
 
   it('allows ordinary development scripts in package.json', () => {
