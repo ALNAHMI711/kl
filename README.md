@@ -34,3 +34,7 @@ npm run dev
 
 ## النشر
 اربط المستودع بمضيف يدعم Next.js واضبط متغيرات البيئة من لوحة الاستضافة. لا تضع مفاتيح API في المستودع أو ملفات العميل.
+
+### HTML output handling
+
+The HTML preview and download actions share the tested `src/lib/html-output.ts` extractor. It only accepts an explicit fenced `html` block; it does not guess that arbitrary model text is a document. The preview remains inside a sandboxed iframe with no script permission. Unit tests live in `src/lib/html-output.test.ts` and run with `npm test`.
