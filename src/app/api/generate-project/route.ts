@@ -12,6 +12,7 @@ const MAX_PROMPT_LENGTH = 12000;
 const WINDOW_MS = 10 * 60 * 1000;
 const MAX_REQUESTS_PER_WINDOW = 5;
 const requestWindows = new Map<string, { count: number; startedAt: number }>();
+const MAX_TRACKED_CLIENTS = 5000;
 // Process-local only; use a shared limiter before deploying multiple instances.
 
 export async function POST(request: Request) {
@@ -40,6 +41,16 @@ export async function POST(request: Request) {
     }
     if (!window || now - window.startedAt >= WINDOW_MS) requestWindows.set(ip, { count: 1, startedAt: now });
     else window.count += 1;
+    // Bound memory use if the service receives many distinct client keys.
+    if (requestWindows.size > MAX_TRACKED_CLIENTS) {
+      for (const [key, entry] of requestWindows) {
+        if (now - entry.startedAt >= WINDOW_MS) requestWindows.delete(key);
+        if (requestWindows.size <= MAX_TRACKED_CLIENTS) break;
+      }
+      if (requestWindows.size > MAX_TRACKED_CLIENTS && !requestWindows.has(ip)) {
+        return NextResponse.json({ error: 'الخدمة مشغولة مؤقتًا. حاول لاحقًا.' }, { status: 503 });
+      }
+    }
 
     const rawBody = await request.text();
     if (new TextEncoder().encode(rawBody).byteLength > 20000) {
