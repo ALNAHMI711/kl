@@ -29,8 +29,10 @@ export async function POST(request: Request) {
       }
     }
 
-    const forwarded = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim();
-    const ip = request.headers.get('x-real-ip') || forwarded || 'unknown';
+    // Trust forwarding headers only when a reverse proxy is configured to overwrite them.
+    const ip = process.env.TRUST_PROXY_HEADERS === 'true'
+      ? request.headers.get('x-real-ip')?.trim() || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+      : 'untrusted-client';
     const now = Date.now();
     const window = requestWindows.get(ip);
     if (window && now - window.startedAt < WINDOW_MS && window.count >= MAX_REQUESTS_PER_WINDOW) {
