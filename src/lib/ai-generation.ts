@@ -45,6 +45,20 @@ function getModel(provider: ProviderName) {
   return createGoogleGenerativeAI({ apiKey })(process.env.GOOGLE_GENERATIVE_AI_MODEL?.trim() || 'gemini-2.5-flash');
 }
 
+function safeErrorDetails(error: unknown): { name: string; statusCode?: number; message?: string } {
+  if (!(error instanceof Error)) return { name: 'UnknownError' };
+  const providerError = error as Error & { statusCode?: unknown; status?: unknown };
+  // Provider messages are useful for diagnosis, but never log credentials or query-string keys.
+  const message = error.message
+    .replace(/AIza[0-9A-Za-z_-]{20,}/g, '[redacted]')
+    .replace(/sk-[0-9A-Za-z_-]{10,}/g, '[redacted]')
+    .replace(/(key|api_key|token)=([^&\\s]+)/gi, '$1=[redacted]')
+    .slice(0, 180);
+  const rawStatus = providerError.statusCode ?? providerError.status;
+  const statusCode = typeof rawStatus === 'number' ? rawStatus : undefined;
+  return { name: error.name, ...(statusCode ? { statusCode } : {}), message };
+}
+
 /**
  * In auto mode, try configured providers in AI_PROVIDER_ORDER. This is provider
  * failover, not a way to multiply a provider's quota. Explicit provider mode
@@ -53,29 +67,32 @@ function getModel(provider: ProviderName) {
 export async function generateWithConfiguredProvider(options: GenerationOptions): Promise<{ text: string; provider: ProviderName }> {
   const selected = (process.env.AI_PROVIDER || 'auto').trim().toLowerCase();
   const providers = configuredProviders();
-  const failures: string[] = [];
-  let attempted = 0;
+  const available = providers
+    .map((provider) => ({ provider, model: getModel(provider) }))
+    .filter((item): item is { provider: ProviderName; model: NonNullable<ReturnType<typeof getModel>> } => item.model !== null);
+  if (available.length === 0) throw new Error('No configured AI provider keys');
 
-  for (const provider of providers) {
-    const model = getModel(provider);
-    if (!model) continue;
-    attempted += 1;
+  // Share the route's ~55-second budget among only providers that actually have keys.
+  // Two configured providers receive up to 25s each; three receive ~18s each.
+  const perProviderTimeout = selected === 'auto'
+    ? Math.min(25_000, Math.floor(52_000 / available.length))
+    : 55_000;
+  const failures: string[] = [];
+
+  for (const { provider, model } of available) {
     try {
       const result = await generateText({
         ...options,
-        // Keep auto failover within the route's 60-second execution budget.
-        abortSignal: AbortSignal.timeout(selected === 'auto' ? 17_000 : 55_000),
+        abortSignal: AbortSignal.timeout(perProviderTimeout),
         model,
       });
       return { text: result.text, provider };
     } catch (error) {
-      // Keep secrets and provider response bodies out of logs and client responses.
       failures.push(provider);
-      console.error('AI provider attempt failed:', provider, error instanceof Error ? error.name : 'UnknownError');
+      console.error('AI provider attempt failed:', provider, safeErrorDetails(error));
       if (selected !== 'auto') throw error;
     }
   }
 
-  if (attempted === 0) throw new Error('No configured AI provider keys');
   throw new Error('All configured AI providers failed: ' + failures.join(','));
 }
