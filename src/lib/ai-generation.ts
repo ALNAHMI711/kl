@@ -13,7 +13,7 @@ type GenerationOptions = {
 };
 
 function configuredProviders(): ProviderName[] {
-  const selected = (process.env.AI_PROVIDER || 'openai').trim().toLowerCase();
+  const selected = (process.env.AI_PROVIDER || 'auto').trim().toLowerCase();
   if (selected !== 'auto') {
     if (selected !== 'openai' && selected !== 'anthropic' && selected !== 'google') {
       throw new Error('Unsupported AI_PROVIDER');
@@ -51,7 +51,7 @@ function getModel(provider: ProviderName) {
  * never silently switches vendors, which keeps cost and data routing predictable.
  */
 export async function generateWithConfiguredProvider(options: GenerationOptions): Promise<{ text: string; provider: ProviderName }> {
-  const selected = (process.env.AI_PROVIDER || 'openai').trim().toLowerCase();
+  const selected = (process.env.AI_PROVIDER || 'auto').trim().toLowerCase();
   const providers = configuredProviders();
   const failures: string[] = [];
   let attempted = 0;
