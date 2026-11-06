@@ -34,7 +34,6 @@ export async function POST(request: Request) {
       }
     }
 
-    // Trust forwarding headers only when a reverse proxy is configured to overwrite them.
     const ip = process.env.TRUST_PROXY_HEADERS === 'true'
       ? request.headers.get('x-real-ip')?.trim() || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
       : 'untrusted-client';
@@ -44,7 +43,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'تم تجاوز حد إنشاء المشاريع مؤقتًا. انتظر قليلًا ثم حاول مجددًا.' }, { status: 429 });
     }
 
-    // Remove expired entries before accepting a new client key so the map stays bounded.
     if (!window && requestWindows.size >= MAX_TRACKED_CLIENTS) {
       for (const [key, entry] of requestWindows) {
         if (now - entry.startedAt >= WINDOW_MS) requestWindows.delete(key);
@@ -63,9 +61,7 @@ export async function POST(request: Request) {
     }
 
     const rawBody = await readTextBodyLimited(request, 20000);
-    if (rawBody === null) {
-      return NextResponse.json({ error: 'حجم الطلب أكبر من الحد المسموح.' }, { status: 413 });
-    }
+    if (rawBody === null) return NextResponse.json({ error: 'حجم الطلب أكبر من الحد المسموح.' }, { status: 413 });
     let body: unknown;
     try {
       body = JSON.parse(rawBody);
@@ -87,10 +83,8 @@ export async function POST(request: Request) {
     });
 
     const parsed = parseModelJson(result.text);
-    if (!parsed) {
-      return NextResponse.json({ error: 'أعاد مزود الذكاء الاصطناعي تنسيقًا غير صالح. حاول مرة أخرى أو قلّل وصف المشروع.' }, { status: 502 });
-    }
-    if (!parsed || typeof parsed !== 'object' || !('files' in parsed) || !('name' in parsed) || !('summary' in parsed)) {
+    if (!parsed) return NextResponse.json({ error: 'أعاد مزود الذكاء الاصطناعي تنسيقًا غير صالح. حاول مرة أخرى أو قلّل وصف المشروع.' }, { status: 502 });
+    if (typeof parsed !== 'object' || !('files' in parsed) || !('name' in parsed) || !('summary' in parsed)) {
       return NextResponse.json({ error: 'استجابة المشروع ناقصة. حاول مرة أخرى.' }, { status: 502 });
     }
     const files = validateProjectFiles(parsed.files);
@@ -101,9 +95,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ name, summary, files, provider: result.provider });
   } catch (error) {
     if (error instanceof Error && error.message === 'No configured AI provider keys') {
-      const selected = (process.env.AI_PROVIDER || 'openai').trim().toLowerCase();
+      const selected = (process.env.AI_PROVIDER || 'auto').trim().toLowerCase();
       const message = selected === 'auto'
-        ? 'أضف مفتاحًا صالحًا واحدًا على الأقل من OPENAI_API_KEY أو ANTHROPIC_API_KEY أو GOOGLE_GENERATIVE_AI_API_KEY.'
+        ? 'لم يتم العثور على مفاتيح AI. أضف GOOGLE_GENERATIVE_AI_API_KEY أو OPENAI_API_KEY أو ANTHROPIC_API_KEY كمتغير بيئة في Railway (اسم المتغير حرفيًا).'
         : selected === 'anthropic'
           ? 'أضف ANTHROPIC_API_KEY في إعدادات البيئة على الخادم.'
           : selected === 'google'
